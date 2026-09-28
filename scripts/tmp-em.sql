@@ -1,0 +1,1 @@
+select count(*) total, count(*) filter (where coalesce(email,'') <> '') with_email, count(*) filter (where coalesce(email,'') = '' and (scout_stage ilike '%قائد%' or scout_stage ilike '%جوال%')) staff_no_email from public.members;

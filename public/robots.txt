@@ -1,0 +1,19 @@
+# مجموعة الأنبا إبرام الكشفية — ara Abram Scouts
+User-agent: *
+Allow: /
+
+# السماح الصريح لزوّار الـ AI (المساعدات الذكية)
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://avaabram.dpdns.org/sitemap.xml

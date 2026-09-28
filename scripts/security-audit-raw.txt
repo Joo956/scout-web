@@ -1,0 +1,816 @@
+--- [1/4] ---
+[
+ {
+  "tablename": "attendance",
+  "policyname": "staff_all",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "attendance_row_visible(stage_key, class_id)",
+  "with_check": "attendance_row_visible(stage_key, class_id)"
+ },
+ {
+  "tablename": "attendance_staff",
+  "policyname": "attendance_staff_admin_write",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "is_admin()",
+  "with_check": "is_admin()"
+ },
+ {
+  "tablename": "attendance_staff",
+  "policyname": "attendance_staff_read",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "(is_admin() OR (EXISTS ( SELECT 1\n   FROM (attendance_staff sup\n     JOIN members mm ON ((mm.id = sup.member_id)))\n  WHERE ((mm.user_id = auth.uid()) AND (sup.role = 'stage_supervisor'::text) AND (sup.stage_key = attendance_staff.stage_key)))))",
+  "with_check": null
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_delete",
+  "cmd": "DELETE",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('badges:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_insert_own",
+  "cmd": "INSERT",
+  "roles": "{public}",
+  "qual": null,
+  "with_check": "((member_id = current_member_id()) OR is_admin() OR has_permission('badges:write'::text))"
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_modify_staff",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))",
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))"
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "((member_id = current_member_id()) OR is_admin() OR has_permission('badges:read'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "badge_awards",
+  "policyname": "badge_awards_update",
+  "cmd": "UPDATE",
+  "roles": "{public}",
+  "qual": "((member_id = current_member_id()) OR is_admin() OR has_permission('badges:write'::text))",
+  "with_check": "((member_id = current_member_id()) OR is_admin() OR has_permission('badges:write'::text))"
+ },
+ {
+  "tablename": "badges",
+  "policyname": "badges_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "badges",
+  "policyname": "badges_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "badges",
+  "policyname": "badges_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('badges:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "books",
+  "policyname": "books_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('library:write'::text))",
+  "with_check": "(is_admin() OR has_permission('library:write'::text))"
+ },
+ {
+  "tablename": "books",
+  "policyname": "public_read_books",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_delete",
+  "cmd": "DELETE",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('exams:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_insert_authenticated",
+  "cmd": "INSERT",
+  "roles": "{authenticated}",
+  "qual": null,
+  "with_check": "true"
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_insert_own",
+  "cmd": "INSERT",
+  "roles": "{public}",
+  "qual": null,
+  "with_check": "(user_id = auth.uid())"
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_modify_staff",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))",
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))"
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "((user_id = auth.uid()) OR is_admin() OR has_permission('exams:read'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "exam_results",
+  "policyname": "exam_results_write",
+  "cmd": "UPDATE",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('exams:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "exams",
+  "policyname": "exams_modify_staff",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))",
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))"
+ },
+ {
+  "tablename": "exams",
+  "policyname": "exams_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "((status = 'Active'::text) OR is_admin() OR has_permission('exams:read'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "exams",
+  "policyname": "exams_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "exams",
+  "policyname": "exams_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('exams:write'::text))",
+  "with_check": "(is_admin() OR has_permission('exams:write'::text))"
+ },
+ {
+  "tablename": "members",
+  "policyname": "members_modify_staff",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))",
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))"
+ },
+ {
+  "tablename": "members",
+  "policyname": "members_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "((user_id = auth.uid()) OR is_admin() OR has_permission('members:read'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "members",
+  "policyname": "members_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "members",
+  "policyname": "members_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('members:write'::text))",
+  "with_check": "(is_admin() OR has_permission('members:write'::text))"
+ },
+ {
+  "tablename": "news",
+  "policyname": "news_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('news:write'::text) OR has_permission('submissions:write'::text))",
+  "with_check": "(is_admin() OR has_permission('news:write'::text) OR has_permission('submissions:write'::text))"
+ },
+ {
+  "tablename": "news",
+  "policyname": "public_read_news",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "orders",
+  "policyname": "orders_insert_own",
+  "cmd": "INSERT",
+  "roles": "{public}",
+  "qual": null,
+  "with_check": "(user_id = auth.uid())"
+ },
+ {
+  "tablename": "orders",
+  "policyname": "orders_modify_staff",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))",
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = ANY (ARRAY['admin'::text, 'subadmin'::text]))"
+ },
+ {
+  "tablename": "orders",
+  "policyname": "orders_read",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "((user_id = auth.uid()) OR is_admin() OR has_permission('orders:read'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "orders",
+  "policyname": "orders_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "orders",
+  "policyname": "orders_write",
+  "cmd": "UPDATE",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('orders:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "products",
+  "policyname": "products_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('store:write'::text))",
+  "with_check": "(is_admin() OR has_permission('store:write'::text))"
+ },
+ {
+  "tablename": "products",
+  "policyname": "public_read_products",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "profiles",
+  "policyname": "profiles_admin_delete",
+  "cmd": "DELETE",
+  "roles": "{authenticated}",
+  "qual": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = 'admin'::text)",
+  "with_check": null
+ },
+ {
+  "tablename": "profiles",
+  "policyname": "profiles_admin_insert",
+  "cmd": "INSERT",
+  "roles": "{authenticated}",
+  "qual": null,
+  "with_check": "(( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = 'admin'::text)"
+ },
+ {
+  "tablename": "profiles",
+  "policyname": "profiles_select_authenticated",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "profiles",
+  "policyname": "profiles_update_admin",
+  "cmd": "UPDATE",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('users:write'::text))",
+  "with_check": null
+ },
+ {
+  "tablename": "profiles",
+  "policyname": "profiles_update_self_or_admin",
+  "cmd": "UPDATE",
+  "roles": "{authenticated}",
+  "qual": "((id = auth.uid()) OR (( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = 'admin'::text))",
+  "with_check": "((id = auth.uid()) OR (( SELECT p.role\n   FROM profiles p\n  WHERE (p.id = auth.uid())) = 'admin'::text))"
+ },
+ {
+  "tablename": "stage_classes",
+  "policyname": "stage_classes_manage_write",
+  "cmd": "ALL",
+  "roles": "{authenticated}",
+  "qual": "attendance_can_manage_stage(stage_key)",
+  "with_check": "attendance_can_manage_stage(stage_key)"
+ },
+ {
+  "tablename": "stage_classes",
+  "policyname": "stage_classes_read",
+  "cmd": "SELECT",
+  "roles": "{authenticated}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "store_settings",
+  "policyname": "public_read_settings",
+  "cmd": "SELECT",
+  "roles": "{public}",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "tablename": "store_settings",
+  "policyname": "settings_write",
+  "cmd": "ALL",
+  "roles": "{public}",
+  "qual": "(is_admin() OR has_permission('store:write'::text))",
+  "with_check": "(is_admin() OR has_permission('store:write'::text))"
+ }
+]
+--- [2/4] ---
+[
+ {
+  "proname": "add_stage_class",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "admin_create_member_accounts",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "admin_create_user",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "admin_delete_member",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "admin_delete_user",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "admin_set_email",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "admin_set_password",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "assign_attendance_staff",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "assign_member_class",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "attendance_row_visible",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "create_member_staff_account",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "get_attendance_by_date",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "get_attendance_log_scoped",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "get_class_roster",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "get_member_exams",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "handle_new_user",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "lookup_scout_for_attendance",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "member_set_own_password",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "my_attendance_scope",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "place_order",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "receive_order",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "record_attendance",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "remove_stage_class",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "rls_auto_enable",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=pg_catalog"
+  ]
+ },
+ {
+  "proname": "scan_attendance",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "score_exam",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "set_order_status",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "submit_news_form",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "sync_member_email_to_auth",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public, extensions"
+  ]
+ },
+ {
+  "proname": "sync_profile_email",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "unassign_attendance_staff",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ },
+ {
+  "proname": "undo_attendance",
+  "security_definer": true,
+  "proconfig": [
+   "search_path=public"
+  ]
+ }
+]
+--- [3/4] ---
+[
+ {
+  "table_name": "attendance",
+  "privs": "TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,SELECT,INSERT"
+ },
+ {
+  "table_name": "attendance_staff",
+  "privs": "INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER"
+ },
+ {
+  "table_name": "badge_awards",
+  "privs": "REFERENCES,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,TRIGGER"
+ },
+ {
+  "table_name": "badges",
+  "privs": "INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER"
+ },
+ {
+  "table_name": "books",
+  "privs": "UPDATE,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,DELETE,TRUNCATE,REFERENCES,TRIGGER"
+ },
+ {
+  "table_name": "exam_results",
+  "privs": "SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,INSERT,SELECT,TRIGGER,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,INSERT"
+ },
+ {
+  "table_name": "exams",
+  "privs": "TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,SELECT,INSERT,TRIGGER,REFERENCES,INSERT,TRUNCATE,DELETE,UPDATE"
+ },
+ {
+  "table_name": "members",
+  "privs": "DELETE,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,TRUNCATE,REFERENCES,TRIGGER"
+ },
+ {
+  "table_name": "news",
+  "privs": "TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES"
+ },
+ {
+  "table_name": "orders",
+  "privs": "TRIGGER,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,SELECT,INSERT,SELECT,UPDATE,DELETE,INSERT,TRUNCATE,REFERENCES"
+ },
+ {
+  "table_name": "products",
+  "privs": "TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES"
+ },
+ {
+  "table_name": "profiles",
+  "privs": "INSERT,TRIGGER,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES"
+ },
+ {
+  "table_name": "profiles_with_email",
+  "privs": "SELECT,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,INSERT"
+ },
+ {
+  "table_name": "stage_classes",
+  "privs": "SELECT,INSERT,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE,SELECT,INSERT,TRIGGER,REFERENCES,TRUNCATE,DELETE,UPDATE"
+ },
+ {
+  "table_name": "store_settings",
+  "privs": "REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,INSERT,SELECT,UPDATE,DELETE,TRUNCATE"
+ }
+]
+--- [4/4] ---
+[
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "badge_images_read",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(bucket_id = 'badge-images'::text)"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "badge_images_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "INSERT",
+  "qual": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "badge_images_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "((bucket_id = 'badge-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('badges:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "product_images_read",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(bucket_id = 'product-images'::text)"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "product_images_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "INSERT",
+  "qual": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "product_images_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "((bucket_id = 'product-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('store:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "product_images_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'product-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('store:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "book_files_read",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(bucket_id = 'book-files'::text)"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "book_files_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "INSERT",
+  "qual": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "book_files_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "((bucket_id = 'book-files'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('library:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "book_files_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'book-files'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('library:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "news_images_read",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "SELECT",
+  "qual": "(bucket_id = 'news-images'::text)"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "news_images_insert",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "INSERT",
+  "qual": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "news_images_update",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "UPDATE",
+  "qual": "((bucket_id = 'news-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('news:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "news_images_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'news-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('news:write'::text)))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "badge_images_delete",
+  "permissive": "PERMISSIVE",
+  "roles": "{public}",
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'badge-images'::text) AND (auth.role() = 'authenticated'::text) AND (is_admin() OR has_permission('badges:write'::text)))"
+ }
+]

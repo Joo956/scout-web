@@ -1,0 +1,385 @@
+@import "tailwindcss";
+
+/* ============================================================
+   🎨 هوية المجموعة — كشافة الأنبا إبرام
+   العنابي + الذهبي + الترابي
+   ============================================================ */
+@theme {
+  --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
+
+  /* العنابي — اللون الأساسي */
+  --color-maroon-50: #fdf2f4;
+  --color-maroon-100: #fbe4e9;
+  --color-maroon-200: #f5c3cd;
+  --color-maroon-300: #ec97a6;
+  --color-maroon-400: #dd5f74;
+  --color-maroon-500: #c42f47;
+  --color-maroon-600: #a61c2c;
+  --color-maroon-700: #7a1420;
+  --color-maroon-800: #5e101a;
+  --color-maroon-900: #420b13;
+  --color-maroon-950: #28060a;
+
+  /* الترابي — خلفيات ونصوص */
+  --color-earth-50: #faf7f2;
+  --color-earth-100: #f2ebdf;
+  --color-earth-200: #e4d6bf;
+  --color-earth-300: #d0bb91;
+  --color-earth-400: #b39966;
+  --color-earth-500: #947b46;
+  --color-earth-600: #755f37;
+  --color-earth-700: #564528;
+  --color-earth-800: #3b301d;
+  --color-earth-900: #271f14;
+  --color-earth-950: #16110a;
+
+  /* الأخضر — حالة النجاح */
+  --color-forest-50: #f0f5f1;
+  --color-forest-100: #dbe7dd;
+  --color-forest-200: #b6cfba;
+  --color-forest-300: #86b48b;
+  --color-forest-400: #54905c;
+  --color-forest-500: #38753f;
+  --color-forest-600: #285a30;
+  --color-forest-700: #1a4523;
+  --color-forest-800: #13341b;
+  --color-forest-900: #0d2413;
+  --color-forest-950: #071509;
+
+  /* الذهبي — لون النجمة والحبل */
+  --color-gold-50: #fffaeb;
+  --color-gold-100: #fff0c4;
+  --color-gold-200: #ffe085;
+  --color-gold-300: #ffca45;
+  --color-gold-400: #f9b426;
+  --color-gold-500: #f2a71b;
+  --color-gold-600: #d0850a;
+  --color-gold-700: #a3630b;
+  --color-gold-800: #784a10;
+  --color-gold-900: #593912;
+  --color-gold-950: #382208;
+}
+
+/* ============================================================
+   🔧 إصلاحات Responsive والأداء
+   ============================================================ */
+
+/* ✅ منع القص الأفقي (overflow-x) على كل الأجهزة */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  direction: rtl;
+}
+
+/* ============================================================
+   ✂️ قص أي تجاوز أفقي نهائياً — بيختفي الشريط الجانبي
+   ============================================================ */
+html,
+body,
+#root {
+  max-width: 100vw;
+  width: 100%;
+  overflow-x: clip !important;
+}
+
+/* احتياطي للمتصفحات القديمة اللي مش بتدعم clip */
+@supports not (overflow-x: clip) {
+
+  html,
+  body,
+  #root {
+    overflow-x: hidden !important;
+  }
+}
+
+body {
+  @apply antialiased;
+  font-family: var(--font-sans);
+  background-color: var(--color-earth-50);
+  background-image: linear-gradient(180deg,
+      color-mix(in srgb, var(--color-gold-100) 35%, var(--color-earth-50)) 0%,
+      var(--color-earth-50) 240px);
+  background-attachment: fixed;
+}
+
+/* ✅ تحسين على الموبايل: الماركي أبطأ للقراءة */
+@media (max-width: 767px) {
+  .animate-marquee {
+    animation-duration: 50s !important;
+  }
+}
+
+/* ✅ احترام إعداد "تقليل الحركة" في نظام المستخدم (accessibility) */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-x {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-fade-in-delay {
+  animation: fade-in 0.6s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-2 {
+  animation: fade-in 0.6s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+.animate-fade-in-delay-3 {
+  animation: fade-in 0.6s ease-out 0.6s forwards;
+  opacity: 0;
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s ease infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   شريط الإعلانات المتحرك (MagicUI Marquee)
+   ============================================================ */
+@keyframes marquee-rtl {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee-rtl 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ============================================================
+   Border Beam دوّار حول الشعار
+   ============================================================ */
+@keyframes rotate-border {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-rotate-border {
+  animation: rotate-border 4s linear infinite;
+}
+
+/* ============================================================
+   تأثير اللمعان على الكروت (Shine)
+   ============================================================ */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 60%);
+  transition: transform 0.9s ease;
+  pointer-events: none;
+}
+
+.group:hover .shine::after {
+  transform: translateX(120%);
+}
+
+/* ============================================================
+   لون التحديد (Selection)
+   ============================================================ */
+::selection {
+  background-color: color-mix(in srgb, var(--color-gold-500) 40%, transparent);
+  color: var(--color-maroon-900);
+}
+
+/* ============================================================
+   Focus states & Accessibility
+   ============================================================ */
+*:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Scrollbar بهوية المجموعة
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-earth-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+      var(--color-maroon-600),
+      var(--color-maroon-800));
+  border-radius: 8px;
+  border: 2px solid var(--color-earth-100);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-maroon-700);
+}
+
+/* ============================================================
+   Utility classes
+   ============================================================ */
+.font-brand {
+  font-family: "Cairo", sans-serif;
+  font-weight: 900;
+}
+
+.dir-ltr {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+/* ============================================================
+   قواعد عرض صور الأخبار (News images)
+   — أي صورة غلاف أو مصغّرة تظهر مقصوصة بشكل ثابت من غير تشوه
+   ============================================================ */
+
+/* صورة غلاف الكارت: تملأ المساحة كلها مقصوصة من المنتصف */
+.news-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  background-color: #efe9e1; /* خلفية محايدة أثناء التحميل */
+}
+
+/* غلاف الخبر المثبت (Hero): نسبة ثابتة ومقصوصة */
+.news-hero-img {
+  height: 12rem;
+  width: 18rem;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  background-color: #efe9e1;
+}
+
+/* صورة غلاف نافذة التفاصيل: ارتفاع أقصى بدون تشويه */
+.news-modal-img {
+  width: 100%;
+  max-height: 20rem;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  background-color: #efe9e1;
+}
+
+/* المصغّرات في جسم الكارت / التفاصيل: كلها بنفس النسبة (16:10) */
+.news-thumb-img {
+  width: 100%;
+  max-width: 16rem;
+  aspect-ratio: 16 / 10;
+  height: auto;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  background-color: #efe9e1;
+}
+
+/* حماية عامة: أي صورة جوه الأخبار ما تكسرش التخطيط */
+.news-body img {
+  max-width: 100%;
+  height: auto;
+}
+/* ============================================================
+   🎬 أنيميشن تجميع وتفكيك اللوجو من الأربع أركان
+   ============================================================ */
+
+@keyframes splitTL {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+  50% { transform: translate(-30px, -30px) scale(0.8); opacity: 0.7; }
+}
+
+@keyframes splitTR {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+  50% { transform: translate(30px, -30px) scale(0.8); opacity: 0.7; }
+}
+
+@keyframes splitBL {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+  50% { transform: translate(-30px, 30px) scale(0.8); opacity: 0.7; }
+}
+
+@keyframes splitBR {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+  50% { transform: translate(30px, 30px) scale(0.8); opacity: 0.7; }
+}
+
+@keyframes corePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.3; }
+}
+
+.animate-split-tl { animation: splitTL 1.8s ease-in-out infinite; }
+.animate-split-tr { animation: splitTR 1.8s ease-in-out infinite; }
+.animate-split-bl { animation: splitBL 1.8s ease-in-out infinite; }
+.animate-split-br { animation: splitBR 1.8s ease-in-out infinite; }
+.animate-core-pulse { animation: corePulse 1.8s ease-in-out infinite; }
