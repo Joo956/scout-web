@@ -9,6 +9,13 @@ import {
 import { Badge, Card, ConfirmDialog, Field, Modal, fmtDate, inputCls } from "./ui.jsx";
 import { parseLinks as _parseLinks, buildLinksValue as _buildLinksValue, isImageUrl } from "../utils/imageLinks.js";
 import { sanitizeInput, sanitizeObject } from "../utils/sanitizeInput.js";
+import {
+  NEWS_STAGE_OPTIONS,
+  splitAudience,
+  withAudience,
+  stripAudience,
+  audienceLabel,
+} from "../utils/newsAudience.js";
 
 const NEWS_CATEGORY_LABELS = {
   Community: "مجتمع",
@@ -17,19 +24,6 @@ const NEWS_CATEGORY_LABELS = {
   Exams: "امتحانات",
   General: "عام",
 };
-
-// ✅ المراحل الكشفية المتاحة لتحديد موجه الخبر
-const SCOUT_STAGES_OPTIONS = [
-  { value: "الكل", label: "🌐 الكل (عام لكل المراحل)" },
-  { value: "أشبال", label: "🐺 أشبال" },
-  { value: "زهرات", label: "🌸 زهرات" },
-  { value: "كشاف", label: "⚜️ كشاف" },
-  { value: "مرشدات", label: "🌼 مرشدات" },
-  { value: "متقدم", label: "🎒 متقدم" },
-  { value: "رائدات", label: "🎒 رائدات" },
-  { value: "جوالة", label: "🧭 جوالة" },
-  { value: "قادة", label: "🎖️ قادة" },
-];
 
 // ✅ الحد الأقصى لعدد الروابط
 const MAX_LINKS = 10;
@@ -93,16 +87,21 @@ function NewsFormModal({ initial, onClose, onSubmit }) {
   const isEdit = Boolean(initial);
   // ✅ تحليل الروابط من imageUrl القديم (links:// prefix)
   const initialLinks = parseLinks(initial?.imageUrl) ?? [];
+  // 🎯 المراحل المستهدفة بتتقرا من علامة أول النص — والنص بيتعرض نضيف من غيرها
   const [form, setForm] = useState(
-    initial ?? {
-      title: "",
-      body: "",
-      description: "",
-      category: "Community",
-      targetStage: "الكل", // 👈 إضافة الخاصية المبدئية للمرحلة
-      imageUrl: "",
-      pinned: false,
-    }
+    initial
+      ? { ...initial, body: stripAudience(initial.body) }
+      : {
+          title: "",
+          body: "",
+          description: "",
+          category: "Community",
+          imageUrl: "",
+          pinned: false,
+        }
+  );
+  const [targetStages, setTargetStages] = useState(() =>
+    initial ? splitAudience(initial.body).stages : []
   );
   // ✅ روابط متعددة: مصفوفة { url, label }
   const [links, setLinks] = useState(
@@ -163,9 +162,9 @@ function NewsFormModal({ initial, onClose, onSubmit }) {
       onSubmit({
         ...form,
         title: form.title.trim(),
-        body: form.body.trim(),
+        // 🎯 التوجيه بيتخزن كعلامة أول النص — من غير تحديد يعني عام للكل
+        body: withAudience(form.body.trim(), targetStages),
         category: form.category || "General",
-        targetStage: form.targetStage || "الكل", // 👈 حفظ المرحلة المحددة
         description: (form.description ?? "").trim(),
         imageUrl,
         form: attachedForm,
@@ -194,33 +193,70 @@ function NewsFormModal({ initial, onClose, onSubmit }) {
           />
         </Field>
 
-        {/* 🎯 اختيار المرحلة الموجه لها الخبر */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="المرحلة الموجه لها الخبر">
-            <select
-              className={inputCls}
-              value={form.targetStage ?? "الكل"}
-              onChange={(e) => setForm((f) => ({ ...f, targetStage: e.target.value }))}
+        {/* 🎯 مين يشوف الخبر؟ — اختيار مرحلة واحدة أو أكتر (من غير تحديد = عام للكل) */}
+        <div>
+          <span className="mb-1.5 block text-xs font-bold tracking-wider text-earth-800 uppercase">
+            مين يشوف الخبر؟
+          </span>
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-earth-200 bg-earth-50/60 p-3 sm:grid-cols-3">
+            <label
+              className={`col-span-full flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm font-extrabold transition ${
+                targetStages.length === 0
+                  ? "border-maroon-400 bg-maroon-50 text-maroon-800"
+                  : "border-earth-200 bg-white text-earth-700 hover:border-earth-300"
+              }`}
             >
-              {SCOUT_STAGES_OPTIONS.map((stg) => (
-                <option key={stg.value} value={stg.value}>
-                  {stg.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="flex items-end pb-3">
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-earth-800">
               <input
                 type="checkbox"
-                checked={form.pinned}
-                onChange={(e) => setForm((f) => ({ ...f, pinned: e.target.checked }))}
+                checked={targetStages.length === 0}
+                onChange={() => setTargetStages([])}
                 className="h-4 w-4 cursor-pointer rounded border-earth-300 accent-maroon-600"
               />
-              تثبيت أعلى الصفحة📌
+              🌐 الكل — عام لكل المراحل والزوار
             </label>
+            {NEWS_STAGE_OPTIONS.map((stg) => {
+              const active = targetStages.includes(stg.value);
+              return (
+                <label
+                  key={stg.value}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold transition ${
+                    active
+                      ? "border-forest-500 bg-forest-50 text-forest-800"
+                      : "border-earth-200 bg-white text-earth-700 hover:border-earth-300"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) =>
+                      setTargetStages((cur) =>
+                        e.target.checked
+                          ? [...cur, stg.value]
+                          : cur.filter((s) => s !== stg.value)
+                      )
+                    }
+                    className="h-4 w-4 cursor-pointer rounded border-earth-300 accent-forest-600"
+                  />
+                  {stg.label}
+                </label>
+              );
+            })}
           </div>
+          <p className="mt-1.5 text-[11px] text-earth-500">
+            لو حددت مرحلة واحدة أو أكتر، الخبر هيظهر بس لحسابات المراحل دي — وباقي المراحل مش هتشوفه أبداً. ومن غير تحديد يبقى عام يشوفه الكل.
+          </p>
+        </div>
+
+        <div className="flex items-center">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-earth-800">
+            <input
+              type="checkbox"
+              checked={form.pinned}
+              onChange={(e) => setForm((f) => ({ ...f, pinned: e.target.checked }))}
+              className="h-4 w-4 cursor-pointer rounded border-earth-300 accent-maroon-600"
+            />
+            تثبيت أعلى الصفحة📌
+          </label>
         </div>
 
         <Field label="النص" required error={errors.body}>
@@ -366,9 +402,9 @@ export default function NewsSection({
                   {item.category && (
                     <Badge tone="gray">{NEWS_CATEGORY_LABELS[item.category] ?? item.category}</Badge>
                   )}
-                  {/* 🎯 إظهار مرحلة الخبر كـ Badge في القائمة */}
+                  {/* 🎯 مين يشوف الخبر — من علامة النص نفسها */}
                   <Badge tone="maroon">
-                    🎯 {item.targetStage || "الكل"}
+                    🎯 {audienceLabel(item)}
                   </Badge>
                   {item.pinned && (
                     <Badge tone="gold">
@@ -383,7 +419,7 @@ export default function NewsSection({
                   {item.title}
                 </h4>
                 <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-earth-700">
-                  {item.body}
+                  {stripAudience(item.body)}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1.5">

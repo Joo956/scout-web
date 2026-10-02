@@ -54,6 +54,9 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
   const [query, setQuery] = useState("");
   const [exportNotice, setExportNotice] = useState("");
 
+  // حساب عدد الطلبات الجديدة (قيد الانتظار) للإشعارات الفورية
+  const pendingCount = orders.filter((o) => o.status === "Pending").length;
+
   // بيانات صاحب الطلب من البروفايلات: الاسم + الإيميل
   const ownerOf = (o) => profiles.find((p) => p.id === o.userId);
   const ownerEmail = (o) => ownerOf(o)?.email || "-";
@@ -61,6 +64,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
   const receivedByName = (uid) => profiles.find((p) => p.id === uid)?.name || "-";
   // اسم اللي وافق على الطلب
   const approvedByName = (uid) => profiles.find((p) => p.id === uid)?.name || "-";
+  
   const fmtDateTime = (t) => {
     try {
       return new Date(t).toLocaleString("ar-EG", {
@@ -68,6 +72,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
       });
     } catch { return t; }
   };
+  
   // صيغة مختصرة لسجل الخطوات جوه الصف
   const fmtShort = (t) => {
     try {
@@ -107,11 +112,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
     // 1️⃣ ورقة ملخص الطلبات (مع تفاصيل المنتجات والاستلام)
     const summaryData = orders.map((order) => {
       const items = parseItems(order.items);
-
-      // أسماء المنتجات مع الكميات: "T-shirt ×2، بوصلة ×1"
       const productsNames = items.map((i) => `${i.name} ×${i.qty}`).join("، ");
-
-      // تفاصيل كل منتج في سطر منفصل داخل الخلية (زي الصفحة بالظبط)
       const productsDetails = items
         .map((i) => `${i.name}: ${i.qty} × ${i.price.toFixed(2)} = ${(i.price * i.qty).toFixed(2)} ج.م`)
         .join("\n");
@@ -133,7 +134,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
       };
     });
 
-    // 2️⃣ ورقة تفاصيل المنتجات (صف مستقل لكل منتج)
+    // 2️⃣ ورقة تفاصيل المنتجات
     const detailsData = [];
     orders.forEach((order) => {
       const items = parseItems(order.items);
@@ -153,7 +154,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
       });
     });
 
-    // 3️⃣ ورقة سجل الاستلام — الطلبات اللي اتسلمت فعلاً
+    // 3️⃣ ورقة سجل الاستلام
     const receivedData = orders
       .filter((order) => order.status === "Received")
       .map((order) => ({
@@ -166,58 +167,38 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
         "تاريخ الطلب": order.date,
       }));
 
-    // إنشاء الملف
     const ExcelJS = await loadExcel();
     const workbook = new ExcelJS.Workbook();
 
-    // ملخص الطلبات
     const summarySheet = workbook.addWorksheet("ملخص الطلبات");
     const summaryHeaders = Object.keys(summaryData[0]);
     summarySheet.addRow(summaryHeaders);
     summaryData.forEach((row) => summarySheet.addRow(Object.values(row)));
-    const summaryColWidths = [12, 12, 22, 26, 32, 45, 10, 14, 14, 18, 20, 20, 22];
-    summarySheet.columns = summaryHeaders.map((h, i) => ({
-      header: h,
-      key: h,
-      width: (summaryColWidths[i] ?? 15) / 2,
-    }));
 
-    // تفاصيل المنتجات
     const detailsSheet = workbook.addWorksheet("تفاصيل المنتجات");
     const detailsHeaders = Object.keys(detailsData[0]);
     detailsSheet.addRow(detailsHeaders);
     detailsData.forEach((row) => detailsSheet.addRow(Object.values(row)));
-    const detailsColWidths = [12, 22, 14, 25, 8, 14, 14, 12, 15];
-    detailsSheet.columns = detailsHeaders.map((h, i) => ({
-      header: h,
-      key: h,
-      width: (detailsColWidths[i] ?? 15) / 2,
-    }));
 
-    // سجل الاستلام
     if (receivedData.length > 0) {
       const receivedSheet = workbook.addWorksheet("سجل الاستلام");
       const receivedHeaders = Object.keys(receivedData[0]);
       receivedSheet.addRow(receivedHeaders);
       receivedData.forEach((row) => receivedSheet.addRow(Object.values(row)));
-      receivedSheet.columns = receivedHeaders.map(() => ({ width: 20 }));
     }
 
-    // المخزون الحالي
     const inventoryData = (products || []).map((product) => ({
       "اسم المنتج": product.name,
       "SKU": product.sku || "-",
       "السعر": `${Number(product.price).toFixed(2)} ج.م`,
       "المخزون المتاح": product.stock,
-      "حالة المخزون":
-        product.stock === 0 ? "نفذ 🔴" : product.stock <= 10 ? "منخفض 🟡" : "متوفر 🟢",
+      "حالة المخزون": product.stock === 0 ? "نفذ 🔴" : product.stock <= 10 ? "منخفض 🟡" : "متوفر 🟢",
       "التصنيف": product.category || "غير مصنف",
     }));
     const inventorySheet = workbook.addWorksheet("المخزون الحالي");
     const inventoryHeaders = Object.keys(inventoryData[0]);
     inventorySheet.addRow(inventoryHeaders);
     inventoryData.forEach((row) => inventorySheet.addRow(Object.values(row)));
-    inventorySheet.columns = inventoryHeaders.map(() => ({ width: 15 }));
 
     const fileName = `الطلبات_${new Date().toISOString().slice(0, 10)}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
@@ -232,6 +213,28 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
 
   return (
     <div className="space-y-6">
+      {/* 🔔 تنبيه فوري للإدارة إذا كان هناك طلبات جديدة قيد الانتظار */}
+      {pendingCount > 0 && (
+        <div className="flex items-center justify-between rounded-2xl border border-gold-300 bg-gradient-to-r from-gold-50 via-gold-100/50 to-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-400 opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-gold-500"></span>
+            </span>
+            <span className="text-sm font-bold text-gold-900">
+              تنبيه: يوجد <strong className="text-maroon-900 underline">{pendingCount}</strong> طلب جديد بحاجة للمراجعة والموافقة!
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilter("Pending")}
+            className="cursor-pointer rounded-xl bg-gold-600 px-3.5 py-1.5 text-xs font-bold text-white shadow transition hover:bg-gold-700"
+          >
+            عرض الطلبات المعلقة ⏳
+          </button>
+        </div>
+      )}
+
       {/* ✅ كروت ملخص الحالات — كل كرت بيتصرف كفلتر */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {STATUS_CARDS.map((c) => {
@@ -243,10 +246,16 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
               key={c.key}
               type="button"
               onClick={() => setFilter(active ? "All" : c.key)}
-              className={`flex cursor-pointer items-center gap-4 rounded-2xl border bg-gradient-to-br p-4 text-right transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`relative flex cursor-pointer items-center gap-4 rounded-2xl border bg-gradient-to-br p-4 text-right transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
                 meta.cardCls
               } ${active ? "ring-2 ring-maroon-600/40 shadow-md" : "shadow-xs"}`}
             >
+              {/* بادج إشعار مميز لطلبات قيد الانتظار */}
+              {c.key === "Pending" && count > 0 && (
+                <span className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[11px] font-extrabold text-white shadow-md animate-bounce">
+                  {count}
+                </span>
+              )}
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-2xl shadow-sm">
                 {c.icon}
               </span>
@@ -290,7 +299,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                   key={c.key}
                   type="button"
                   onClick={() => setFilter(active ? "All" : c.key)}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                  className={`relative flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition ${
                     active
                       ? "bg-maroon-700 text-white shadow-sm"
                       : "bg-maroon-50 text-maroon-800 hover:bg-maroon-100"
@@ -298,6 +307,11 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                 >
                   <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
                   {c.label} ({count})
+                  {c.key === "Pending" && count > 0 && (
+                    <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] text-white">
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -366,7 +380,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                       </div>
                     </td>
 
-                    {/* المنتجات — كل منتج في سطر مرتب */}
+                    {/* المنتجات */}
                     <td className="py-3 px-2 align-top">
                       <div className="space-y-1.5">
                         {items.map((item, i) => (
@@ -423,7 +437,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                       )}
                     </td>
 
-                    {/* التاريخ + سجل الخطوات (موافقة ← استلام) بسطر نضيف */}
+                    {/* التاريخ + سجل الخطوات */}
                     <td className="py-3 pl-2 text-left text-xs text-earth-500 whitespace-nowrap align-top">
                       {fmtDate(o.date)}
                       {(o.status !== "Pending" || o.receivedAt) && (

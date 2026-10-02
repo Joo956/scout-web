@@ -3,6 +3,7 @@ import MemberLayout, { GuestNotice } from "./MemberLayout.jsx";
 import { useStore } from "../store.jsx";
 import ImageLightbox from "../components/ImageLightbox.jsx";
 import { parseLinks, buildLinksValue, isImageUrl, getProductImages } from "../utils/imageLinks.js";
+import { canSeeNews, stripAudience } from "../utils/newsAudience.js";
 
 // ✅ عرض روابط الخبر كبطاقات قابلة للضغط
 function NewsLinks({ imageUrl, className = "" }) {
@@ -113,11 +114,11 @@ const normalizeCategory = (cat) => CATEGORY_LABELS[cat] ?? cat;
 const getStyle = (item) => CATEGORY_STYLES[normalizeCategory(item.category ?? item.type)] ?? CATEGORY_STYLES["مجتمع"];
 const getEmoji = (item) => item.emoji ?? getStyle(item).emoji;
 const getLabel = (item) => normalizeCategory(item.category ?? item.type);
-// الوصف المختصر على الكرت: description — ولو فاضي أول 140 حرف من النص الكامل + "…"
+// الوصف المختصر على الكرت: description — ولو فاضي أول 140 حرف من النص الكامل (من غير علامة التوجيه) + "…"
 const getExcerpt = (item) => {
   const desc = (item.description ?? "").trim();
   if (desc) return desc;
-  const body = (item.body ?? "").trim();
+  const body = stripAudience(item.body ?? "").trim();
   if (!body) return "";
   return body.length > 140 ? `${body.slice(0, 140)}…` : body;
 };
@@ -349,12 +350,26 @@ function NewsCard({ item, onOpenDetails, formButton, onOpenLightbox }) {
 }
 
 export default function NewsPage() {
-  const { news, submitNewsForm, profile, currentUser } = useStore();
+  const { news, submitNewsForm, profile, currentUser, members } = useStore();
   const [openForm, setOpenForm] = useState(null);
   // ✅ الخبر المختار — الضغط على الكرت يفتح عرض التفاصيل والإغلاق يرجّع للقايمة
   const [selectedNews, setSelectedNews] = useState(null);
   // ✅ عارض الصور على مستوى الصفحة (زي المتجر) — بره الكارت عشان الضغطات ما تتسربش له
   const [lightbox, setLightbox] = useState(null); // { images, index }
+
+  // 🎯 فلترة الإعلانات بالمرحلة: حساب اشبال مش هيشوف إعلانات جوالة وهكذا
+  // مرحلة العضو بتتقرا من سجله في members — بنفس طريقة الامتحانات
+  // (بالمطابقة على userId الأول زي صفحة البروفايل، والإيميل احتياطي)
+  const userEmail = (currentUser?.email || profile?.email || "").toLowerCase();
+  const myMember =
+    members?.find((m) => m.userId === currentUser?.id) ||
+    members?.find((m) => (m.email || "").toLowerCase() === userEmail);
+  const viewCtx = {
+    isLoggedIn: Boolean(currentUser),
+    memberStage: myMember?.scoutStage ?? "",
+    role: currentUser?.role || profile?.role || "",
+  };
+  const visibleNews = news.filter((item) => canSeeNews(item, viewCtx));
 
   // زر Escape بيقفل عرض التفاصيل
   useEffect(() => {
@@ -369,7 +384,7 @@ export default function NewsPage() {
     setOpenForm((cur) => (cur === id ? null : id));
   };
 
-  const sorted = [...news].sort((a, b) => {
+  const sorted = [...visibleNews].sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     return b.date.localeCompare(a.date);
   });
@@ -377,7 +392,6 @@ export default function NewsPage() {
   const featured = sorted.find((n) => n.pinned);
   const rest = sorted.filter((n) => n.id !== featured?.id);
 
-  const userEmail = (currentUser?.email || profile?.email || "").toLowerCase();
   const countFor = (item) =>
     (item.submissions ?? []).filter(
       (s) => (s.email || "").toLowerCase() === userEmail || (s.name || "").trim() === (profile?.name || "").trim()
@@ -530,9 +544,9 @@ export default function NewsPage() {
                 <h2 className="mt-4 text-2xl font-extrabold leading-snug text-earth-900">
                   {selectedNews.title}
                 </h2>
-                {/* النص الكامل بفواصل الأسطر زي ما اتكتب */}
+                {/* النص الكامل بفواصل الأسطر زي ما اتكتب — من غير علامة التوجيه */}
                 <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-earth-700">
-                  {selectedNews.body}
+                  {stripAudience(selectedNews.body)}
                 </div>
                 {/* الفورم المرفق (form jsonb) بيظهر في التفاصيل زي المنطق الحالي */}
                 {formButton(selectedNews)}

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "../store.jsx";
 import { ArrowRightIcon } from "../admin/icons.jsx";
 import { parseLinks } from "../utils/imageLinks.js";
+import { canSeeNews, stripAudience } from "../utils/newsAudience.js";
 
 // ✅ Animation Variants
 const fadeInUp = {
@@ -151,10 +152,10 @@ const TICKER = [
 ];
 
 const GALLERY = [
-  { src: "/images/4.jpg", title: "معسكرات صيفية", span: "md:col-span-2 md:row-span-2" },
-  { src: "/images/560353233_1249026010599540_7229267757849523442_n.jpg", title: "أنشطة ومهارات", span: "md:col-span-2" },
-  { src: "/images/8.jpg", title: "حفلات ومسيرات", span: "" },
-  { src: "/images/7.jpg", title: "أخوة كشفية", span: "" },
+  { src: "/images/4.jpg", title: "معسكرات صيفية" },
+  { src: "/images/560353233_1249026010599540_7229267757849523442_n.jpg", title: "أنشطة ومهارات" },
+  { src: "/images/8.jpg", title: "حفلات ومسيرات" },
+  { src: "/images/7.jpg", title: "أخوة كشفية" },
 ];
 
 // ✅ عرض روابط الخبر
@@ -296,7 +297,7 @@ const fmtDate = (d) => {
 const getExcerpt = (item) => {
   const desc = (item.description ?? "").trim();
   if (desc) return desc;
-  const body = (item.body ?? item.content ?? "").trim();
+  const body = stripAudience(item.body ?? item.content ?? "").trim();
   if (!body) return "لا يوجد وصف متاح";
   return body.length > 140 ? `${body.slice(0, 140)}…` : body;
 };
@@ -385,24 +386,24 @@ function PinnedNewsCard({ item, index, featured = false }) {
 }
 
 export default function HomePage() {
-  const { news = [], products = [], user } = useStore();
+  const { news = [], products = [], currentUser, profile, members = [] } = useStore();
   const isMobile = useIsMobile();
   const spotlight = useSpotlight(isMobile);
 
-  const userStage = user?.stage || "زائر";
+  // 🎯 فلترة الإعلانات بالمرحلة: كل حساب يشوف إعلانات مرحلته والإعلانات العامة بس
+  // بنفس طريقة الامتحانات: مطابقة userId الأول والإيميل احتياطي
+  const email = (currentUser?.email || profile?.email || "").toLowerCase();
+  const myMember =
+    members.find((m) => m.userId === currentUser?.id) ||
+    members.find((m) => (m.email || "").toLowerCase() === email);
+  const viewCtx = {
+    isLoggedIn: Boolean(currentUser),
+    memberStage: myMember?.scoutStage ?? "",
+    role: currentUser?.role || profile?.role || "",
+  };
 
   const pinnedNews = [...news]
-    .filter((item) => {
-      const isPinned = item.pinned;
-      const isMatchingStage =
-        item.targetStage === "الكل" ||
-        !item.targetStage ||
-        item.targetStage === userStage ||
-        user?.role === "admin" ||
-        user?.role === "leader";
-
-      return isPinned && isMatchingStage;
-    })
+    .filter((item) => item.pinned && canSeeNews(item, viewCtx))
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   return (
@@ -697,9 +698,10 @@ export default function HomePage() {
               </h2>
             </motion.div>
 
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {/* خبر واحد = كارت واحد في النص من غير أعمدة فاضية */}
+            <div className={`mt-12 grid gap-6 ${pinnedNews.length === 1 ? "mx-auto max-w-3xl" : "md:grid-cols-2 lg:grid-cols-3"}`}>
               {pinnedNews.map((item, idx) => (
-                <PinnedNewsCard key={item.id || idx} item={item} index={idx} featured={idx === 0} />
+                <PinnedNewsCard key={item.id || idx} item={item} index={idx} featured={pinnedNews.length > 1 && idx === 0} />
               ))}
             </div>
           </div>
@@ -718,16 +720,17 @@ export default function HomePage() {
             </h2>
           </motion.div>
 
-          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {/* شبكة 2×2 مضمونة — كل صورة بنفس النسبة عشان مفيش فراغات */}
+          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {GALLERY.map((img, i) => (
               <motion.div
                 key={i}
-                className={`group relative overflow-hidden rounded-2xl bg-earth-200 h-64 ${img.span}`}
+                className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-earth-200 shadow-sm transition-shadow hover:shadow-xl"
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
               >
                 <img
                   src={img.src}
@@ -742,6 +745,84 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ============ CTA — انضم إلينا ============ */}
+      <section className="relative overflow-hidden bg-gradient-to-l from-maroon-900 via-maroon-800 to-maroon-700 py-16 sm:py-20">
+        <div className="pointer-events-none absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-gold-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/5 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <span className="pointer-events-none absolute -left-8 bottom-0 select-none text-[10rem] leading-none opacity-[0.06]">⚜️</span>
+        <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            {currentUser ? (
+              <>
+                {/* مسجل دخول — ترحيب وتابع مش تسجيل */}
+                <span className="inline-flex items-center gap-2 rounded-full border border-gold-400/50 bg-gold-400/10 px-4 py-1.5 text-xs font-extrabold text-gold-300 uppercase">
+                  ⚜️ نوّرنا
+                </span>
+                <h2 className="mt-4 text-3xl font-extrabold text-white sm:text-4xl">
+                  يلا نكمّل الرحلة يا{" "}
+                  <span className="text-gold-300">
+                    {((currentUser.name || profile?.name || "").trim().split(/\s+/)[0]) || "قائد"}
+                  </span>
+                  !
+                </h2>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-maroon-100/90 sm:text-base">
+                  شاراتك وامتحاناتك وطلباتك مستنياك — تابع تقدمك من ملفك الشخصي، وشوف إيه الجديد في الوحدة النهارده.
+                </p>
+                <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+                  <motion.a
+                    href="#/profile"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gold-400 px-6 py-3 text-sm font-extrabold text-maroon-900 shadow-lg shadow-gold-500/25 transition hover:bg-gold-300"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    ملفي الشخصي <ArrowRightIcon className="h-4 w-4 rotate-180" />
+                  </motion.a>
+                  <motion.a
+                    href="#/news"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-extrabold text-white backdrop-blur transition hover:bg-white/20"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    شوف آخر الأخبار
+                  </motion.a>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* مش مسجل — دعوة للتسجيل */}
+                <span className="inline-flex items-center gap-2 rounded-full border border-gold-400/50 bg-gold-400/10 px-4 py-1.5 text-xs font-extrabold text-gold-300 uppercase">
+                  ⚜️ انضم إلينا
+                </span>
+                <h2 className="mt-4 text-3xl font-extrabold text-white sm:text-4xl">
+                  جاهز تبدأ <span className="text-gold-300">رحلتك الكشفية</span>؟
+                </h2>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-maroon-100/90 sm:text-base">
+                  سجّل دخولك عشان تتابع شاراتك وامتحاناتك وطلباتك من مكان واحد — ولو جديد معانا، كلم قادة الوحدة وانضم لعيلة الأنبا إبرام.
+                </p>
+                <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+                  <motion.a
+                    href="#/login"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gold-400 px-6 py-3 text-sm font-extrabold text-maroon-900 shadow-lg shadow-gold-500/25 transition hover:bg-gold-300"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    ابدأ من دلوقتي <ArrowRightIcon className="h-4 w-4 rotate-180" />
+                  </motion.a>
+                  <motion.a
+                    href="#/news"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-extrabold text-white backdrop-blur transition hover:bg-white/20"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    شوف آخر الأخبار
+                  </motion.a>
+                </div>
+              </>
+            )}
+          </motion.div>
         </div>
       </section>
     </div>
