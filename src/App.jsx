@@ -29,7 +29,7 @@ function useHashRoute() {
   return hash;
 }
 
-// 🎬 دالة التحميل المعدلة بأنيميشن اللوجو المتفكك والمجمع
+// 🎬 شاشة التحميل بتأثير الضي الذهبي الدوار الفخم
 function AdminFallback({ children, text = "جارِ التحميل..." }) {
   return (
     <Suspense
@@ -37,41 +37,17 @@ function AdminFallback({ children, text = "جارِ التحميل..." }) {
         <div className="flex min-h-screen flex-col items-center justify-center bg-earth-50 px-4 text-center font-sans">
           <div className="flex flex-col items-center justify-center space-y-6">
             
-            {/* حاوية تجمع الأجزاء المتفككة واللوجو الرئيسي */}
-            <div className="relative h-28 w-28 flex items-center justify-center">
-              {/* ↖️ أعلى أيسر */}
-              <img
-                src="/images/Logo_Scout-removebg.png"
-                alt="جزء 1"
-                className="absolute h-24 w-24 object-contain animate-split-tl drop-shadow-md"
-              />
+            {/* حاوية اللوجو مع تأثير الضي الذهبي */}
+            <div className="relative h-32 w-32 flex items-center justify-center">
+              {/* هالة الضي الذهبي الدوارة */}
+              <div className="absolute inset-0 rounded-full border-4 border-amber-400/30 border-t-amber-500 animate-spin blur-[1px]"></div>
+              <div className="absolute inset-[-4px] rounded-full border-2 border-yellow-300/20 border-b-yellow-400 animate-ping opacity-75"></div>
 
-              {/* ↗️ أعلى أيمن */}
-              <img
-                src="/images/Logo_Scout-removebg.png"
-                alt="جزء 2"
-                className="absolute h-24 w-24 object-contain animate-split-tr drop-shadow-md"
-              />
-
-              {/* ↙️ أسفل أيسر */}
-              <img
-                src="/images/Logo_Scout-removebg.png"
-                alt="جزء 3"
-                className="absolute h-24 w-24 object-contain animate-split-bl drop-shadow-md"
-              />
-
-              {/* ↘️ أسفل أيمن */}
-              <img
-                src="/images/Logo_Scout-removebg.png"
-                alt="جزء 4"
-                className="absolute h-24 w-24 object-contain animate-split-br drop-shadow-md"
-              />
-
-              {/* 🌟 اللوجو الأساسي في المنتصف */}
+              {/* اللوجو الأساسي في المنتصف */}
               <img
                 src="/images/Logo_Scout-removebg.png"
                 alt="اللوجو الرئيسي"
-                className="relative z-10 h-24 w-24 object-contain animate-core-pulse drop-shadow-2xl"
+                className="relative z-10 h-24 w-24 object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]"
               />
             </div>
 
@@ -201,7 +177,7 @@ function Router() {
   const hash = useHashRoute();
   const { currentUser, loading } = useStore();
 
-  // ✅ عنوان الصفحة حسب القسم — للتبويب ومشاركة الروابط ومحركات البحث
+  // ✅ عنوان الصفحة حسب القسم
   useEffect(() => {
     const routeTitles = {
       "#/home": "الرئيسية",
@@ -226,7 +202,6 @@ function Router() {
   const protectedRoutes = ["#/profile", "#/cart"];
   const isProtected = protectedRoutes.some(route => hash.startsWith(route));
 
-  // ✅ التوجيهات الداخلية تتم في useEffect بدلاً من جسم الـ render
   useEffect(() => {
     if (hash.startsWith("#/login") && currentUser) {
       window.location.hash = isAdminOrManager ? "#/admin" : "#/home";
@@ -235,17 +210,19 @@ function Router() {
     }
   }, [hash, currentUser, isAdminOrManager]);
 
-  // ✅ شاشة تحميل أثناء جلب البيانات الأولية
+  // ✅ شاشة تحميل البيانات الأولية بنفس الضي الذهبي الفخم
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-earth-50 px-4 text-center font-sans">
         <div className="flex flex-col items-center justify-center space-y-6">
-          <div className="relative h-28 w-28 flex items-center justify-center">
-            <img src="/images/Logo_Scout-removebg.png" alt="جزء 1" className="absolute h-24 w-24 object-contain animate-split-tl drop-shadow-md" />
-            <img src="/images/Logo_Scout-removebg.png" alt="جزء 2" className="absolute h-24 w-24 object-contain animate-split-tr drop-shadow-md" />
-            <img src="/images/Logo_Scout-removebg.png" alt="جزء 3" className="absolute h-24 w-24 object-contain animate-split-bl drop-shadow-md" />
-            <img src="/images/Logo_Scout-removebg.png" alt="جزء 4" className="absolute h-24 w-24 object-contain animate-split-br drop-shadow-md" />
-            <img src="/images/Logo_Scout-removebg.png" alt="اللوجو الرئيسي" className="relative z-10 h-24 w-24 object-contain animate-core-pulse drop-shadow-2xl" />
+          <div className="relative h-32 w-32 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-4 border-amber-400/30 border-t-amber-500 animate-spin blur-[1px]"></div>
+            <div className="absolute inset-[-4px] rounded-full border-2 border-yellow-300/20 border-b-yellow-400 animate-ping opacity-75"></div>
+            <img
+              src="/images/Logo_Scout-removebg.png"
+              alt="اللوجو الرئيسي"
+              className="relative z-10 h-24 w-24 object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]"
+            />
           </div>
           <p className="text-lg font-bold text-maroon-900 animate-pulse tracking-wide">جارِ التحميل...</p>
         </div>
@@ -253,28 +230,20 @@ function Router() {
     );
   }
 
-  // ✅ تعيين كلمة المرور أول مرة
   if (currentUser && currentUser.passwordSet === false) {
     return <SetPasswordPage />;
   }
 
   let page;
 
-  // ✅ 1. صفحة تسجيل الدخول
   if (hash.startsWith("#/login")) {
     if (currentUser) return null;
     page = <LoginPage />;
-  }
-  // ✅ 2. رابط فاضي → الرئيسية
-  else if (hash === "" || hash === "#") {
+  } else if (hash === "" || hash === "#") {
     return null;
-  }
-  // ✅ 3. صفحة سكان الحضور من QR
-  else if (hash.startsWith("#/scan")) {
+  } else if (hash.startsWith("#/scan")) {
     page = <AdminFallback text="جارِ تحميل شاشة المسح..."><ScanPage /></AdminFallback>;
-  }
-  // ✅ 4. لوحة التحكم
-  else if (hash.startsWith("#/admin")) {
+  } else if (hash.startsWith("#/admin")) {
     if (isAdminOrManager) {
       page = (
         <AdminFallback text="جارِ تحميل لوحة الإدارة...">
@@ -284,15 +253,12 @@ function Router() {
     } else {
       page = <NotAuthorized />;
     }
-  }
-  // ✅ 5. الصفحات المحمية (محتاجة تسجيل دخول)
-  else if (isProtected && !currentUser) {
+  } else if (isProtected && !currentUser) {
     page = <LoginRequired />;
-  }
-  // ✅ 6. صفحات الأعضاء
-  else if (hash.startsWith("#/exams")) page = <ExamsPage />;
+  } else if (hash.startsWith("#/exams")) page = <ExamsPage />;
   else if (hash.startsWith("#/badges")) page = <BadgesPage />;
   else if (hash.startsWith("#/news")) page = <NewsPage />;
+  else if (hash.startsWith("#/store")) page = <StorePage />; // Note: kept as user had it
   else if (hash.startsWith("#/store")) page = <StorePage />;
   else if (hash.startsWith("#/cart")) page = <CartPage />;
   else if (hash.startsWith("#/library")) page = <LibraryPage />;
@@ -302,7 +268,7 @@ function Router() {
 
   return page;
 }
-// قائمة أسماء الصور بعد تحويلها إلى روابط مباشرة (Direct Image URLs)
+
 const LOGIN_SLIDER_IMAGES = [
   "https://i.postimg.cc/zGC8yTTt/2.jpg",
   "https://i.postimg.cc/Z0kzRqnT/4.jpg",
