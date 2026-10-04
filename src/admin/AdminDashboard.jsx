@@ -69,7 +69,9 @@ export default function AdminDashboard() {
     addProduct: storeAddProduct,
     updateProduct: storeUpdateProduct,
     deleteProduct: storeDeleteProduct,
+    deleteBadgeAward: storeDeleteBadgeAward,
     updateOrderStatus: storeUpdateOrderStatus,
+    deleteOrder: storeDeleteOrder,
     addExam: storeAddExam,
     updateExam: storeUpdateExam,
     deleteExam: storeDeleteExam,
@@ -224,6 +226,8 @@ export default function AdminDashboard() {
   const deleteAvailability = (id) => runWrite(() => storeDeleteAvailability(id), "تم حذف التوفر");
 
   const updateOrderStatus = (id, status) => runWrite(() => storeUpdateOrderStatus(id, status), "تم تحديث حالة الطلب");
+  const deleteOrder = (id) => runWrite(() => storeDeleteOrder(id), "تم حذف الطلب");
+  const deleteBadgeAward = (id) => runWrite(() => storeDeleteBadgeAward(id), "تم حذف المنحة");
 
   const addExam = (data) => runWrite(() => storeAddExam(data), "تم إضافة الامتحان");
   const updateExam = (id, data) => runWrite(() => storeUpdateExam(id, data), "تم تحديث الامتحان");
@@ -315,10 +319,10 @@ export default function AdminDashboard() {
         readOnly={isReadOnly("store")}
       />
     ),
-    orders: <OrdersSection orders={orders} onUpdateStatus={updateOrderStatus} products={products} profiles={profiles} readOnly={isReadOnly("orders")} />,
+        orders: <OrdersSection orders={orders} onUpdateStatus={updateOrderStatus} onDelete={deleteOrder} products={products} profiles={profiles} readOnly={isReadOnly("orders")} />,
     library: <LibrarySection books={books} onAdd={addBook} onUpdate={updateBook} onDelete={deleteBook} readOnly={isReadOnly("library")} />,
     news: <NewsSection news={news} onAdd={addNews} onUpdate={updateNews} onDelete={deleteNews} readOnly={isReadOnly("news")} />,
-    badges: <BadgesSection />,
+    badges: <BadgesSection onDeleteAward={deleteBadgeAward} />,
   };
 
   if (noAccess) {

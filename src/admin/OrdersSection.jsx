@@ -2,8 +2,8 @@ import { useState } from "react";
 
 // ExcelJS بيتحمّل عند الطلب بس — بيقلل حجم التحميل الأولي للكل
 const loadExcel = () => import("exceljs").then((m) => m.default);
-import { SearchIcon, DownloadIcon } from "./icons.jsx";
-import { Card, fmtDate, fmtMoney, inputCls } from "./ui.jsx";
+import { SearchIcon, DownloadIcon, TrashIcon } from "./icons.jsx";
+import { Card, ConfirmDialog, fmtDate, fmtMoney, inputCls } from "./ui.jsx";
 import { ORDER_STATUSES } from "./data.js";
 
 const statusStyles = {
@@ -49,10 +49,12 @@ const STATUS_CARDS = [
   { key: "Received", icon: "📦", label: "تم الاستلام" },
 ];
 
-export default function OrdersSection({ orders, onUpdateStatus, products, profiles = [], readOnly = false }) {
+export default function OrdersSection({ orders, onUpdateStatus, onDelete, products, profiles = [], readOnly = false }) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [exportNotice, setExportNotice] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // حساب عدد الطلبات الجديدة (قيد الانتظار) للإشعارات الفورية
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
@@ -356,6 +358,7 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                 <th className="pb-3 px-2 text-left font-bold w-[100px]">الإجمالي</th>
                 <th className="pb-3 px-2 text-center font-bold w-[130px]">الحالة</th>
                 <th className="pb-3 pl-2 text-left font-bold w-[110px]">التاريخ</th>
+                {!readOnly && <th className="pb-3 pr-2 text-center font-bold w-[70px]">حذف</th>}
               </tr>
             </thead>
             <tbody>
@@ -459,12 +462,28 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
                         </div>
                       )}
                     </td>
+
+                    {/* حذف الطلب */}
+                    {!readOnly && (
+                      <td className="py-3 pr-2 text-center align-top">
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(o)}
+                          disabled={deleting}
+                          title="حذف الطلب نهائياً"
+                          aria-label={`حذف الطلب ${o.orderId}`}
+                          className="cursor-pointer rounded-lg border border-red-200 bg-red-50 p-1.5 text-red-500 transition hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="py-10 text-center text-sm text-earth-500">
+                  <td colSpan={readOnly ? "6" : "7"} className="py-10 text-center text-sm text-earth-500">
                     لا توجد طلبات مطابقة.
                   </td>
                 </tr>
@@ -482,6 +501,26 @@ export default function OrdersSection({ orders, onUpdateStatus, products, profil
           <span>استخدم القائمة المنسدلة لتحديث حالة الطلب.</span>
         </div>
       </Card>
+
+      {/* ✅ تأكيد حذف الطلب — الحذف نهائي ومش بيرجع */}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="حذف الطلب"
+        message={`هل أنت متأكد من حذف الطلب رقم "${pendingDelete?.orderId}" نهائياً؟ الحذف مش بيرجع، والطلب هيختفي من السجل ومن حساب العميل.`}
+        confirmLabel="حذف نهائي"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (!target || !onDelete) return;
+          setDeleting(true);
+          try {
+            await onDelete(target.id);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }

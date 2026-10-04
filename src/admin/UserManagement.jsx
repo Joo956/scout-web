@@ -17,11 +17,26 @@ const PERM_SECTIONS = [
 
 const ROLES = [
   { value: "member", label: "عضو (Member)" },
-  { value: "subadmin", label: "مدير فرعي (Subadmin)" },
+  { value: "subadmin", label: "مسؤول أقسام (Subadmin)" },
   { value: "admin", label: "مدير عام (Admin)" },
 ];
 
 const roleLabel = (role) => ROLES.find((r) => r.value === role)?.label ?? role;
+
+// ✅ أسماء الأقسام اللي المسؤول عنها — بتتقرا من صلاحياته وتتعرض Badges في القايمة
+const sectionLabel = (key) =>
+  PERM_SECTIONS.find((s) => s.key === key)?.label ?? key;
+
+const staffSections = (perms = []) => {
+  const list = Array.isArray(perms) ? perms : [];
+  if (list.includes("*")) return ["كل الأقسام"];
+  const sections = new Set();
+  list.forEach((p) => {
+    if (!p) return;
+    sections.add(p.split(":")[0]);
+  });
+  return [...sections].map(sectionLabel);
+};
 
 const toPermissionObject = (arr = []) => {
   const obj = {};
@@ -487,6 +502,20 @@ export default function UserManagement({ readOnly = false }) {
                     }`}>
                     {roleLabel(user.role)}
                   </span>
+                  {/* 🎯 الأقسام اللي المسؤول عنها */}
+                  {user.role === "subadmin" && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {staffSections(user.permissions).length === 0 ? (
+                        <span className="text-[10px] font-bold text-earth-400">مفيش أقسام متحددة</span>
+                      ) : (
+                        staffSections(user.permissions).map((s) => (
+                          <span key={s} className="rounded-full bg-earth-100 border border-earth-200 px-2 py-0.5 text-[10px] font-bold text-earth-700">
+                            🎯 {s}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
                   {user.createdAt ? new Date(user.createdAt).toLocaleDateString("ar-EG") : "—"}

@@ -570,16 +570,34 @@ function GrantBadgeModal({ badges, members, onClose, onSubmit }) {
 }
 
 /* ───────────── Review Awards Sub-tab ───────────── */
-function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
+function ReviewAwards({ awards, onRevoke, onUpdateStatus, onDeleteAward, readOnly }) {
+  const { currentUser } = useStore();
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [revoking, setRevoking] = useState(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [pendingRevoke, setPendingRevoke] = useState(null);
+  // 🆕 إرجاع التقديم للتكميل بسبب + اعتماد بملاحظة مراجع
+  const [pendingSendBack, setPendingSendBack] = useState(null);
+  const [sendBackReason, setSendBackReason] = useState("");
+  const [sendingBack, setSendingBack] = useState(false);
+  const [pendingApprove, setPendingApprove] = useState(null);
+  const [approveNote, setApproveNote] = useState("");
+  const [approving, setApproving] = useState(false);
+  // 🆕 حذف المنحة نهائياً من السجل
+  const [pendingDeleteAward, setPendingDeleteAward] = useState(null);
+  const [deletingAward, setDeletingAward] = useState(false);
+
+  const reviewerName = (currentUser?.name || "المسؤول").trim();
+  const countBy = (s) => awards.filter((a) => a.status === s).length;
+  const needsReview = countBy("submitted") + countBy("pending_start");
 
   const filtered = useMemo(() => {
-    if (statusFilter === "all") return awards;
-    return awards.filter((a) => a.status === statusFilter);
+    const list =
+      statusFilter === "all" ? [...awards] : awards.filter((a) => a.status === statusFilter);
+    // المراجعات المعلقة الأول: التقديمات، بعدين طلبات البدء، بعدين الباقي
+    const rank = { submitted: 0, pending_start: 1 };
+    return list.sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2));
   }, [awards, statusFilter]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -603,10 +621,52 @@ function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
   };
 
   const handleApprove = async (award) => {
+    setPendingApprove(award);
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!pendingApprove) return;
+    setApproving(true);
     try {
-      await onUpdateStatus(award.id, { status: "approved" });
-    } catch {
-      /* error handled by toast */
+      const note = approveNote.trim() || "اعتماد نهائي";
+      await onUpdateStatus(pendingApprove.id, {
+        status: "approved",
+        notes: `✅ ${note} — ${reviewerName}`,
+        awardedAt: new Date().toISOString(),
+      });
+      setPendingApprove(null);
+      setApproveNote("");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleSendBackConfirm = async () => {
+    if (!pendingSendBack) return;
+    const reason = sendBackReason.trim();
+    if (!reason) return;
+    setSendingBack(true);
+    try {
+      await onUpdateStatus(pendingSendBack.id, {
+        status: "in_progress",
+        notes: `↩ رجعتها للتكميل: ${reason} — ${reviewerName}`,
+      });
+      setPendingSendBack(null);
+      setSendBackReason("");
+    } finally {
+      setSendingBack(false);
+    }
+  };
+
+  // 🆕 حذف المنحة نهائياً — بيستخدم onDeleteAward اللي جاي من الأدمن داش بورد
+  const handleDeleteAwardConfirm = async () => {
+    if (!pendingDeleteAward || !onDeleteAward) return;
+    setDeletingAward(true);
+    try {
+      await onDeleteAward(pendingDeleteAward.id);
+      setPendingDeleteAward(null);
+    } finally {
+      setDeletingAward(false);
     }
   };
 
@@ -626,19 +686,24 @@ function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
           <p className="mt-1 text-sm text-earth-600">
             مراجعة وإدارة الشارات الممنوحة للأعضاء ({awards.length} منحة)
           </p>
+          {needsReview > 0 && (
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-gold-300 bg-gold-50 px-3 py-1 text-xs font-extrabold text-gold-800">
+              🔔 {needsReview} محتاجة قرار — التقديمات وطلبات البدء ظاهرة الأول
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className={`${inputCls} w-40`}
+            className={`${inputCls} w-44`}
           >
-            <option value="all">كل الحالات</option>
-            <option value="pending_start">طلب بدء</option>
-            <option value="in_progress">قيد العمل</option>
-            <option value="submitted">تم التقديم</option>
-            <option value="approved">معتمد</option>
-            <option value="revoked">ملغي</option>
+            <option value="all">كل الحالات ({awards.length})</option>
+            <option value="pending_start">طلب بدء ({countBy("pending_start")})</option>
+            <option value="in_progress">قيد العمل ({countBy("in_progress")})</option>
+            <option value="submitted">تم التقديم ({countBy("submitted")})</option>
+            <option value="approved">معتمد ({countBy("approved")})</option>
+            <option value="revoked">ملغي ({countBy("revoked")})</option>
           </select>
         </div>
       </div>
@@ -741,6 +806,16 @@ function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
                           ✅
                         </button>
                       )}
+                      {a.status === "submitted" && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingSendBack(a)}
+                          className="cursor-pointer rounded-lg p-1.5 text-gold-700 transition hover:bg-gold-50"
+                          title="إرجاع للتكميل"
+                        >
+                          ↩
+                        </button>
+                      )}
                       {a.status !== "revoked" && a.status !== "pending_start" && (
                         <button
                           type="button"
@@ -749,6 +824,17 @@ function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
                           title="إلغاء المنحة"
                         >
                           🚫
+                        </button>
+                      )}
+                      {/* 🗑️ حذف نهائي من السجل — لكل الحالات */}
+                      {!readOnly && onDeleteAward && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeleteAward(a)}
+                          className="cursor-pointer rounded-lg p-1.5 text-red-500/80 transition hover:bg-red-50 hover:text-red-700"
+                          title="حذف نهائي من السجل"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
@@ -831,12 +917,112 @@ function ReviewAwards({ awards, onRevoke, onUpdateStatus, readOnly }) {
         }}
         onConfirm={handleRevoke}
       />
+
+      {/* 🆕 حذف المنحة نهائياً من السجل */}
+      <ConfirmDialog
+        open={Boolean(pendingDeleteAward)}
+        title="حذف المنحة نهائياً"
+        message={
+          pendingDeleteAward
+            ? `هل أنت متأكد من حذف منحة "${pendingDeleteAward.badges?.name || "الشارة"}" من "${pendingDeleteAward.members?.name || "العضو"}" نهائياً؟ هتتشال من السجل خالص ومش هترجع — لو عايز تبطلها مفعول بس استخدم 🚫 إلغاء المنحة.`
+            : ""
+        }
+        confirmLabel="حذف نهائي"
+        onCancel={() => setPendingDeleteAward(null)}
+        onConfirm={handleDeleteAwardConfirm}
+      />
+
+      {/* 🆕 اعتماد شارة مقدَّمة — بملاحظة اختيارية باسم المراجع */}
+      <Modal
+        open={Boolean(pendingApprove)}
+        onClose={() => { setPendingApprove(null); setApproveNote(""); }}
+        title="اعتماد الشارة"
+        subtitle={
+          pendingApprove
+            ? `"${pendingApprove.badges?.name || "الشارة"}" — ${pendingApprove.members?.name || "العضو"}`
+            : ""
+        }
+        width="sm:max-w-md"
+      >
+        <Field label="ملاحظة المراجع (اختياري)">
+          <textarea
+            rows={3}
+            className={`${inputCls} resize-y`}
+            value={approveNote}
+            onChange={(e) => setApproveNote(e.target.value)}
+            placeholder="مثال: الأدلّة كاملة والشارة مستحقة — مبروك!"
+          />
+        </Field>
+        <p className="mt-2 text-[11px] text-earth-500">
+          هيتسجل باسمك مع تاريخ الاعتماد، وهتظبط تاريخ منح الشارة على النهارده.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => { setPendingApprove(null); setApproveNote(""); }}
+            className="cursor-pointer rounded-lg border border-earth-200 px-4 py-2 text-sm font-semibold text-earth-700 transition hover:bg-earth-100"
+          >
+            إلغاء
+          </button>
+          <button
+            type="button"
+            onClick={handleApproveConfirm}
+            disabled={approving}
+            className="cursor-pointer rounded-lg bg-forest-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-forest-800 disabled:opacity-60"
+          >
+            {approving ? "جارِ الاعتماد..." : "✅ اعتماد نهائي"}
+          </button>
+        </div>
+      </Modal>
+
+      {/* 🆕 إرجاع تقديم للتكميل — بسبب إلزامي يوصله للعضو */}
+      <Modal
+        open={Boolean(pendingSendBack)}
+        onClose={() => { setPendingSendBack(null); setSendBackReason(""); }}
+        title="إرجاع للتكميل"
+        subtitle={
+          pendingSendBack
+            ? `"${pendingSendBack.badges?.name || "الشارة"}" — ${pendingSendBack.members?.name || "العضو"}`
+            : ""
+        }
+        width="sm:max-w-md"
+      >
+        <p className="mb-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-xs font-bold text-gold-800">
+          التقديم هيرجع لـ «قيد العمل» والعضو يشوف سببك ويكمل الناقص — ويقدر يقدم تاني.
+        </p>
+        <Field label="ناقصه إيه؟ (إلزامي)" required>
+          <textarea
+            rows={3}
+            className={`${inputCls} resize-y ${!sendBackReason.trim() && pendingSendBack ? "" : ""}`}
+            value={sendBackReason}
+            onChange={(e) => setSendBackReason(e.target.value)}
+            placeholder="مثال: ناقص صور أدلة التطبيق العملي — اكمّل البندين 3 و 4 وقدم تاني"
+          />
+        </Field>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => { setPendingSendBack(null); setSendBackReason(""); }}
+            className="cursor-pointer rounded-lg border border-earth-200 px-4 py-2 text-sm font-semibold text-earth-700 transition hover:bg-earth-100"
+          >
+            إلغاء
+          </button>
+          <button
+            type="button"
+            onClick={handleSendBackConfirm}
+            disabled={sendingBack || !sendBackReason.trim()}
+            className="cursor-pointer rounded-lg bg-gold-500 px-5 py-2 text-sm font-bold text-white transition hover:bg-gold-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {sendingBack ? "جارِ الإرجاع..." : "↩ إرجاع للتكميل"}
+          </button>
+        </div>
+      </Modal>
     </Card>
   );
 }
 
 /* ───────────── Main BadgesSection ───────────── */
-export default function BadgesSection({ readOnly = false }) {
+export default function BadgesSection({ readOnly = false, onDeleteAward }) {
   const {
     badges,
     badgeAwards,
@@ -1341,6 +1527,7 @@ export default function BadgesSection({ readOnly = false }) {
           awards={badgeAwards}
           onRevoke={handleRevokeAward}
           onUpdateStatus={handleUpdateAwardStatus}
+          onDeleteAward={onDeleteAward}
           readOnly={readOnly}
         />
       )}

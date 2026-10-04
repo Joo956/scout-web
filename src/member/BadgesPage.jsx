@@ -790,6 +790,33 @@ export default function BadgesPage() {
                 🔒 ⏳ قيد المراجعة — تم تقديم الأدلّة
               </div>
             )}
+            {/* 🆕 ملاحظة المراجع: سبب إرجاع التقديم للتكميل أو ملاحظة الاعتماد */}
+            {(() => {
+              const myAward = myAwards.find((a) => a.badge_id === selectedBadge.id);
+              const note = (myAward?.notes || "").trim();
+              if (!note) return null;
+              if (note.startsWith("↩")) {
+                return (
+                  <div className="bg-gold-50 border border-gold-300 rounded-lg p-3 text-sm text-gold-900">
+                    <p className="font-bold">↩ رجعتها لك للتكميل — ملاحظة المراجع:</p>
+                    <p className="mt-1 whitespace-pre-wrap leading-relaxed">
+                      {note.replace(/^↩ رجعتها للتكميل:\s*/, "")}
+                    </p>
+                  </div>
+                );
+              }
+              if (note.startsWith("✅")) {
+                return (
+                  <div className="bg-forest-50 border border-forest-200 rounded-lg p-3 text-sm text-forest-800">
+                    <p className="font-bold">✅ ملاحظة المراجع:</p>
+                    <p className="mt-1 whitespace-pre-wrap leading-relaxed">
+                      {note.replace(/^✅\s*/, "")}
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {pendingStartIds.has(selectedBadge.id) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-700">
                 ⏳ في انتظار موافقة القائد — لن يمكنك ملء الاستمارة إلا بعد الموافقة

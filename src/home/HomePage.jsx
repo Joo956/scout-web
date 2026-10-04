@@ -130,22 +130,15 @@ const HERO_CHIPS = [
   { emoji: "🧭", label: "ملاحة", top: "60%", right: "-4%" },
   { emoji: "🤝", label: "أخوة كشفية", top: "82%", right: "26%" },
 ];
-
 const SCOUT_STAGES = [
-  { emoji: "🐺", name: "أشبال" },
-  { emoji: "🌸", name: "زهرات" },
-  { emoji: "⚜️", name: "كشاف" },
-  { emoji: "🌼", name: "مرشدات" },
-  { emoji: "🎒", name: "متقدم" },
-  { emoji: "🎒", name: "رائدات" },
-  { emoji: "🧭", name: "جوالة" },
-  { emoji: "🎖️", name: "قادة" },
+  { image: "https://i.postimg.cc/G2j09ds8/Screenshot-2026-10-03-005735.png", name: "أشبال / زهرات" },
+  { image: "https://i.postimg.cc/GmnjgYfB/Screenshot-2026-10-03-005819.png", name: "كشاف / مرشدات" },
+  { image: "https://i.postimg.cc/SQw5qnPr/Screenshot-2026-10-03-005843.png", name: "متقدم / رائدات" },
+  { image: "https://i.postimg.cc/pdGGSr8h/Screenshot-2026-10-03-005834.png", name: "جوالة" },
 ];
-
 const TICKER = [
   "⚜️ مجموعة الأنبا إبرام الكشفية",
   "🏕️ معسكرات وأنشطة على مدار السنة",
-  "🎖️ برنامج شارات معتمد",
   "🧭 مغامرات كشفية حقيقية",
   "🤝 أخوة كشفية تدوم مدى الحياة",
   "🔥 انضم لأكثر من 500 كشاف وقائد",
@@ -224,11 +217,12 @@ const ExamIcon = (props) => (
 const FEATURES = [
   {
     icon: UsersIcon,
-    title: " الشارات والإنجازات",
-    desc: "متابعة كاملة للإنجازات والمهارات المكتسبة لكل كشاف وقائد.",
+    title: " الشارات ",
+    desc: "قدم دلوقتي على الشارات واكتشف مهارتك",
     tone: "from-emerald-500/10 to-emerald-600/20 text-emerald-600 border-emerald-200",
     accent: "bg-emerald-500",
     href: "#/badges",
+    image: "https://i.postimg.cc/YCmF9wH8/Screenshot-2026-10-03-233504.png",
   },
   {
     icon: ShoppingCartIcon,
@@ -237,6 +231,7 @@ const FEATURES = [
     tone: "from-maroon-500/10 to-maroon-600/20 text-maroon-700 border-maroon-200",
     accent: "bg-maroon-700",
     href: "#/store",
+    image: "https://i.postimg.cc/WpGJqPtx/Gemini-Generated-Image-o3v2v4o3v2v4o3v2.jpg",
   },
   {
     icon: BookOpenIcon,
@@ -245,6 +240,7 @@ const FEATURES = [
     tone: "from-amber-500/10 to-amber-600/20 text-amber-600 border-amber-200",
     accent: "bg-amber-500",
     href: "#/exams",
+    image: "https://i.postimg.cc/RFrNqPmn/portada-exam.jpg",
   },
   {
     icon: ExamIcon,
@@ -253,6 +249,7 @@ const FEATURES = [
     tone: "from-amber-500/10 to-amber-600/20 text-amber-600 border-amber-200",
     accent: "bg-amber-500",
     href: "#/news",
+    image: "https://i.postimg.cc/43vTbwtx/news.jpg",
   },
 ];
 
@@ -600,6 +597,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ المراحل الكشفية ============ */}
+      {/* ============ المراحل الكشفية ============ */}
       <section className="relative bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <motion.div
@@ -617,8 +615,12 @@ export default function HomePage() {
                 variants={fadeInUp}
                 whileHover={{ y: -6, scale: 1.08 }}
               >
-                <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-earth-200 bg-white text-2xl shadow-sm transition-colors hover:border-gold-400 hover:shadow-md">
-                  {s.emoji}
+                <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-earth-200 bg-white shadow-sm transition-colors hover:border-gold-400 hover:shadow-md">
+                  <img 
+                    src={s.image} 
+                    alt={s.name} 
+                    className="h-full w-full object-cover p-1" 
+                  />
                 </span>
                 <span className="text-[11px] font-extrabold text-earth-700">{s.name}</span>
               </motion.div>
@@ -626,7 +628,6 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
-
       {/* ============ FEATURES ============ */}
       <section id="features" className="relative overflow-hidden bg-white py-20 sm:py-28">
         <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={{
@@ -662,23 +663,71 @@ export default function HomePage() {
             whileInView="animate"
             viewport={{ once: true }}
           >
-            {FEATURES.map(({ icon: Icon, title, desc, tone, href }) => (
+            {FEATURES.map(({ icon: Icon, title, desc, tone, accent, href, image }) => (
               <TiltCard
                 key={title}
                 href={href}
                 variants={fadeInUp}
                 isMobile={isMobile}
-                className="group relative block overflow-hidden rounded-3xl border border-earth-200 bg-white p-7 shadow-sm transition-all hover:border-maroon-300"
+                className="group relative block overflow-hidden rounded-3xl border border-earth-200 bg-white shadow-sm transition-all hover:border-maroon-300"
               >
-                <div className={`inline-flex rounded-2xl border p-3.5 bg-gradient-to-br ${tone}`}>
-                  <Icon className="h-6 w-6" />
+                {/* Accent line */}
+                <div
+                  className={`absolute left-0 right-0 top-0 z-20 h-1 ${accent} transition-all duration-500 group-hover:h-1.5`}
+                />
+
+                {/* Image */}
+                <div className="relative h-40 overflow-hidden">
+                  <img
+                    src={image}
+                    alt={title}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+
+                  {/* Image overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+                  {/* Decorative glow */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-70" />
+
+                  {/* Icon */}
+                  <div
+                    className={`absolute bottom-[-22px] right-5 z-10 flex h-14 w-14 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br ${tone} shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1`}
+                  >
+                    <Icon className="h-6 w-6" />
+                  </div>
                 </div>
-                <h3 className="mt-5 text-lg font-extrabold text-earth-900 group-hover:text-maroon-700 transition-colors">
-                  {title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-earth-600">
-                  {desc}
-                </p>
+
+                {/* Content */}
+                <div className="relative p-6 pt-9">
+                  <h3 className="text-lg font-extrabold text-earth-900 transition-colors duration-300 group-hover:text-maroon-700">
+                    {title}
+                  </h3>
+
+                  <p className="mt-2 min-h-[48px] text-xs leading-relaxed text-earth-600">
+                    {desc}
+                  </p>
+
+                  {/* Bottom action */}
+                  <div className="mt-5 flex items-center justify-between border-t border-earth-100 pt-4">
+                    <span className="text-xs font-extrabold text-maroon-700 transition-all duration-300 group-hover:text-maroon-800">
+                      استكشف المزيد
+                    </span>
+
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-earth-50 text-maroon-700 transition-all duration-300 group-hover:bg-maroon-700 group-hover:text-white">
+                      <ArrowRightIcon className="h-4 w-4 rotate-180 transition-transform duration-300 group-hover:-translate-x-1" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom glow */}
+                <div
+                  className={`pointer-events-none absolute -bottom-16 -left-16 h-32 w-32 rounded-full ${accent} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20`}
+                />
               </TiltCard>
             ))}
           </motion.div>

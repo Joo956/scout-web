@@ -424,6 +424,12 @@ export function StoreProvider({ children }) {
     setOrders((p) => p.map((o) => o.id === m.id ? m : o)); cacheInvalidate();
     return m;
   };
+  // حذف طلب نهائياً من السجل — من لوحة إدارة الطلبات (بتأكيد في الواجهة)
+  const deleteOrder = async (id) => {
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) throw error;
+    setOrders((p) => p.filter((o) => o.id !== id)); cacheInvalidate();
+  };
   const placeOrder = async (items, customer) => {
     const { data, error } = await supabase.rpc("place_order", { p_items: items, p_customer: customer ?? null });
     if (error) throw error;
@@ -602,6 +608,12 @@ export function StoreProvider({ children }) {
     if (error) throw error;
     setBadges((p) => p.filter((b) => b.id !== id)); cacheInvalidate();
   };
+  // حذف منحة شارة نهائياً من السجل — للتنظيف (الإلغاء بيسيبها ملغي، الحذف بيشيلها خالص)
+  const deleteBadgeAward = async (id) => {
+    const { error } = await supabase.from("badge_awards").delete().eq("id", id);
+    if (error) throw error;
+    setBadgeAwards((p) => p.filter((a) => a.id !== id)); cacheInvalidate();
+  };
   const awardBadge = async (badgeId, memberId, notes = "") => {
     const { data, error } = await supabase.from("badge_awards")
       .insert({ badge_id: badgeId, member_id: memberId, status: "approved", notes, awarded_by: currentUser?.id, awarded_at: new Date().toISOString() })
@@ -634,6 +646,7 @@ export function StoreProvider({ children }) {
     if (updates.status !== undefined) row.status = updates.status;
     if (updates.evidence !== undefined) row.evidence = updates.evidence;
     if (updates.notes !== undefined) row.notes = updates.notes;
+    if (updates.awardedAt !== undefined) row.awarded_at = updates.awardedAt;
     if (updates.applicationData !== undefined) row.application_data = updates.applicationData;
     if (Object.keys(row).length === 0) return;
     const { data, error } = await supabase.from("badge_awards").update(row).eq("id", awardId)
@@ -741,12 +754,12 @@ export function StoreProvider({ children }) {
     updateStoreInfo, addCategory, updateCategory, deleteCategory,
     addPriceRange, updatePriceRange, deletePriceRange,
     addAvailability, updateAvailability, deleteAvailability,
-    placeOrder, updateOrderStatus, receiveOrder,
+    placeOrder, updateOrderStatus, receiveOrder, deleteOrder,
     addExam, updateExam, deleteExam, submitExamResult, approveExamResult, allowExamRetake,
     addNews, updateNews, deleteNews, submitNewsForm, deleteNewsSubmission,
     addBook, updateBook, deleteBook,
     addMember, addMembers, updateMember, deleteMember, createMemberAccounts, searchMembers,
-    badges, badgeAwards, addBadge, updateBadge, deleteBadge,
+    badges, badgeAwards, addBadge, updateBadge, deleteBadge, deleteBadgeAward,
     awardBadge, startBadge, revokeBadge, updateBadgeAward, seedBadges,
     createStaffAccount, updateUser, deleteUser, setUserPassword, setUserEmail,
   };

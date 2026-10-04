@@ -7,20 +7,20 @@
 @theme {
   --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
 
-  /* العنابي — اللون الأساسي */
-  --color-maroon-50: #fdf2f4;
-  --color-maroon-100: #fbe4e9;
-  --color-maroon-200: #f5c3cd;
-  --color-maroon-300: #ec97a6;
-  --color-maroon-400: #dd5f74;
-  --color-maroon-500: #c42f47;
-  --color-maroon-600: #a61c2c;
-  --color-maroon-700: #7a1420;
-  --color-maroon-800: #5e101a;
-  --color-maroon-900: #420b13;
-  --color-maroon-950: #28060a;
+  /* العنابي — اللون الأساسي (الأحمر الطوبي من اللوجو) */
+  --color-maroon-50: #fdf4f2;
+  --color-maroon-100: #f9e5e1;
+  --color-maroon-200: #f3c6bd;
+  --color-maroon-300: #ea9c8e;
+  --color-maroon-400: #dd6a56;
+  --color-maroon-500: #c53a28;
+  --color-maroon-600: #a92315;
+  --color-maroon-700: #8e1b16;
+  --color-maroon-800: #6d1512;
+  --color-maroon-900: #52100e;
+  --color-maroon-950: #300807;
 
-  /* الترابي — خلفيات ونصوص */
+  /* الترابي — خلفيات ونصوص (نيوترال دافي من نفس عيلة اللوجو) */
   --color-earth-50: #faf7f2;
   --color-earth-100: #f2ebdf;
   --color-earth-200: #e4d6bf;
@@ -33,7 +33,7 @@
   --color-earth-900: #271f14;
   --color-earth-950: #16110a;
 
-  /* الأخضر — حالة النجاح */
+  /* الأخضر — حالة النجاح فقط (مش من الهوية) */
   --color-forest-50: #f0f5f1;
   --color-forest-100: #dbe7dd;
   --color-forest-200: #b6cfba;
@@ -46,14 +46,14 @@
   --color-forest-900: #0d2413;
   --color-forest-950: #071509;
 
-  /* الذهبي — لون النجمة والحبل */
+  /* الذهبي — من اللوجو (الحبل والأشكال) */
   --color-gold-50: #fffaeb;
-  --color-gold-100: #fff0c4;
-  --color-gold-200: #ffe085;
-  --color-gold-300: #ffca45;
-  --color-gold-400: #f9b426;
-  --color-gold-500: #f2a71b;
-  --color-gold-600: #d0850a;
+  --color-gold-100: #fff1c9;
+  --color-gold-200: #ffe386;
+  --color-gold-300: #ffcc50;
+  --color-gold-400: #f8b43e;
+  --color-gold-500: #f3a72f;
+  --color-gold-600: #d28510;
   --color-gold-700: #a3630b;
   --color-gold-800: #784a10;
   --color-gold-900: #593912;
