@@ -164,7 +164,7 @@ const downloadImportTemplate = async () => {
 };
 
 export default function ImportMembers() {
-    const { members, addMembers, createMemberAccounts } = useStore();
+    const { members, syncMembersFromImport, createMemberAccounts } = useStore();
     const [preview, setPreview] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -450,8 +450,11 @@ export default function ImportMembers() {
         setSuccess('');
         setAccountSummary(null);
         try {
-            const created = await addMembers(preview);
-            setSuccess(`✅ تم استيراد ${created.length} عضو بنجاح!`);
+            const syncResult = await syncMembersFromImport(preview);
+            const created = syncResult.created;
+            setSuccess(
+                `✅ تمت مزامنة الملف مع لوحة الإدارة: إضافة ${syncResult.created.length}، تحديث ${syncResult.updated.length}، تخطي ${syncResult.skipped} صف.`
+            );
             setPreview([]);
             if (fileInputRef.current) fileInputRef.current.value = '';
 
