@@ -69,6 +69,8 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
     // ✅ Pagination
     const PAGE_SIZE = 50;
     const [memberPage, setMemberPage] = useState(1);
+    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false);
 
     // ✅ QR Code
     const [qrMember, setQrMember] = useState(null);
@@ -101,6 +103,39 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
 
     const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
     const paginatedMembers = filteredMembers.slice((memberPage - 1) * PAGE_SIZE, memberPage * PAGE_SIZE);
+    const allFilteredSelected = filteredMembers.length > 0 && filteredMembers.every((member) => selectedMemberIds.includes(member.id));
+    const toggleMemberSelection = (memberId) => {
+        setSelectedMemberIds((current) => current.includes(memberId)
+            ? current.filter((id) => id !== memberId)
+            : [...current, memberId]);
+    };
+    const toggleAllFilteredMembers = () => {
+        if (allFilteredSelected) {
+            const filteredIds = new Set(filteredMembers.map((member) => member.id));
+            setSelectedMemberIds((current) => current.filter((id) => !filteredIds.has(id)));
+        } else {
+            setSelectedMemberIds((current) => [...new Set([...current, ...filteredMembers.map((member) => member.id)])]);
+        }
+    };
+    const handleDeleteSelectedMembers = async () => {
+        if (readOnly || bulkDeleteBusy || selectedMemberIds.length === 0) return;
+        const selectedMembers = members.filter((member) => selectedMemberIds.includes(member.id));
+        const confirmed = window.confirm(
+            `هل أنت متأكد من حذف ${selectedMembers.length} كشاف؟\\n` +
+            `سيتم حذف بياناتهم وحسابات الدخول المرتبطة بهم إن وجدت.\\n` +
+            "العملية لا يمكن التراجع عنها."
+        );
+        if (!confirmed) return;
+        setBulkDeleteBusy(true);
+        try {
+            for (const member of selectedMembers) {
+                await onDelete(member.id);
+            }
+            setSelectedMemberIds([]);
+        } finally {
+            setBulkDeleteBusy(false);
+        }
+    };
 
     // Reset page when search or stage filter changes
     useEffect(() => { setMemberPage(1); }, [debouncedSearch, stageFilter]);
@@ -519,12 +554,60 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                         </form>
                     )}
 
+                    {!readOnly && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-earth-200 bg-white p-4 shadow-sm">
+                            <div className="text-sm font-bold text-earth-700">
+                                {selectedMemberIds.length > 0
+                                    ? `تم تحديد ${selectedMemberIds.length} كشاف`
+                                    : "حدد الكشافين المطلوب حذفهم من القائمة"}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={toggleAllFilteredMembers}
+                                    disabled={filteredMembers.length === 0 || bulkDeleteBusy}
+                                    className="rounded-lg border border-maroon-300 px-4 py-2 text-sm font-bold text-maroon-800 transition hover:bg-maroon-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    {allFilteredSelected ? "إلغاء تحديد الكل" : `تحديد الكل (${filteredMembers.length})`}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedMemberIds([])}
+                                    disabled={selectedMemberIds.length === 0 || bulkDeleteBusy}
+                                    className="rounded-lg border border-earth-300 px-4 py-2 text-sm font-bold text-earth-700 transition hover:bg-earth-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    إلغاء التحديد
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteSelectedMembers}
+                                    disabled={selectedMemberIds.length === 0 || bulkDeleteBusy}
+                                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    {bulkDeleteBusy ? "جاري الحذف..." : `🗑️ حذف المحددين (${selectedMemberIds.length})`}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-white border border-earth-200 rounded-xl overflow-hidden shadow-sm">
                         {/* ✅ جدول قابل للتمرير الأفقي */}
                         <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
                             <table className="w-full min-w-[1400px]">
                                 <thead className="bg-maroon-50 border-b border-maroon-100">
                                     <tr>
+                                        {!readOnly && (
+                                            <th className="px-3 py-3 text-center text-sm w-[4%]">
+                                                <input
+                                                    type="checkbox"
+                                                    aria-label="تحديد كل الكشافين في النتائج"
+                                                    checked={allFilteredSelected}
+                                                    onChange={toggleAllFilteredMembers}
+                                                    disabled={filteredMembers.length === 0 || bulkDeleteBusy}
+                                                    className="h-4 w-4 cursor-pointer accent-red-700"
+                                                />
+                                            </th>
+                                        )}
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm sticky right-0 bg-maroon-50 z-10 w-[10%]">الكود</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[12%]">الاسم</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[10%]">أب الاعتراف</th>
@@ -541,7 +624,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                 <tbody className="divide-y divide-earth-100">
                                     {paginatedMembers.length === 0 ? (
                                         <tr>
-                                            <td colSpan="11" className="px-4 py-8 text-center text-earth-500 text-base">
+                                            <td colSpan={readOnly ? 11 : 12} className="px-4 py-8 text-center text-earth-500 text-base">
                                                 {searchQuery || stageFilter
                                                     ? "لا توجد نتائج مطابقة."
                                                     : "لا يوجد أعضاء مسجلين حتى الآن."}
@@ -549,7 +632,19 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                         </tr>
                                     ) : (
                                         paginatedMembers.map((member) => (
-                                            <tr key={member.id} className="hover:bg-earth-50 transition">
+                                            <tr key={member.id} className={`transition ${selectedMemberIds.includes(member.id) ? "bg-red-50 hover:bg-red-100" : "hover:bg-earth-50"}`}>
+                                                {!readOnly && (
+                                                    <td className="px-3 py-3 align-top text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`تحديد ${member.name}`}
+                                                            checked={selectedMemberIds.includes(member.id)}
+                                                            onChange={() => toggleMemberSelection(member.id)}
+                                                            disabled={bulkDeleteBusy}
+                                                            className="mt-1 h-4 w-4 cursor-pointer accent-red-700"
+                                                        />
+                                                    </td>
+                                                )}
 
                                                 {/* 1. الكود + حالة الحساب */}
                                                 <td className="px-3 py-3 align-top sticky right-0 bg-white z-10">
