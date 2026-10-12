@@ -18,6 +18,7 @@ const STAGES_FEMALE = Object.fromEntries(STAGE_PAIRS.map((p) => [p.key, p.female
 const TEMPLATE_COLUMNS = [
     { header: 'المرحلة', width: 14 },
     { header: 'رقم', width: 10 },
+    { header: 'الكود الكشفي', width: 18 },
     { header: 'الاسم', width: 32 },
     { header: 'الكلية', width: 20 },
     { header: 'السنة الدراسية', width: 16 },
@@ -85,7 +86,8 @@ const downloadImportTemplate = async () => {
         '2️⃣  عمود "المرحلة" — اختار من القائمة المنسدلة: ' + STAGE_VALUES.join('، '),
         '     (مذكر يبقى: أشبال / كشاف / متقدم / جوال / قائد / رائد — ومؤنث: زهرات / مرشدات / رائدات / جوالة / قائدة / رائدة)',
         '3️⃣  عمود "تاريخ الميلاد" — اكتبه بتاريخ حقيقي بصيغة يوم/شهر/سنة (مثال: 15/3/2009).',
-        '4️⃣  عمود "رقم" — رقم الكشاف (اختياري).',
+        '4️⃣  عمود "رقم" — الرقم الداخلي للكشاف (اختياري).',
+        '5️⃣  عمود "الكود الكشفي" — اكتب الكود الذي تريد تخصيصه للكشاف (اختياري). لو تركته فارغًا، النظام هيولّد كود تلقائيًا. لازم يكون كل كود مختلفًا.',
         '5️⃣  عمود "البريد الإلكتروني" — مهم جداً: بيتعمل منه حساب دخول تلقائي وباسورد فريد بيتبعت على الإيميل ده.',
         '6️⃣  "الموبايل 1" غالباً رقم المنزل وبيتم تجاهله في الحسابات — المهم: "ت. الأب" و "ت. الأم".',
         '7️⃣  عدد الإخوات بيتحسب تلقائياً من الأخوات المسجلين بنفس البيت — مش محتاج تكتبه.',
@@ -112,6 +114,7 @@ const downloadImportTemplate = async () => {
         [
             'جوال',                     // المرحلة
             '1024',                     // رقم
+            'SC-1024',                 // الكود الكشفي
             'أحمد محمد عبد الله',       // الاسم
             'هندسة',                    // الكلية
             'السنة الأولى',             // السنة الدراسية
@@ -130,6 +133,7 @@ const downloadImportTemplate = async () => {
         [
             'جوالة',
             '1025',
+            'SC-1025',
             'مريم خالد إبراهيم',
             'طب',
             'السنة الثانية',
@@ -402,6 +406,7 @@ export default function ImportMembers() {
                         governorate: row['المنطقة']?.toString().trim() || '',
                         confessor: confessor,
                         scoutNumber: row['رقم']?.toString().trim() || '',
+                        scoutCode: (row['الكود الكشفي'] ?? row['الكود'] ?? row['Scout Code'] ?? '').toString().trim(),
                         siblingsCount: 0,
                     });
                 }
@@ -599,6 +604,7 @@ export default function ImportMembers() {
                             <thead className="bg-earth-50 sticky top-0">
                                 <tr>
                                     <th className="px-3 py-2 text-right border-b">#</th>
+                                    <th className="px-3 py-2 text-right border-b">الكود الكشفي</th>
                                     <th className="px-3 py-2 text-right border-b">الاسم</th>
                                     <th className="px-3 py-2 text-right border-b">أب الاعتراف</th>
                                     <th className="px-3 py-2 text-right border-b">اسم الأم</th>
@@ -614,6 +620,7 @@ export default function ImportMembers() {
                                 {preview.map((member, idx) => (
                                     <tr key={idx} className="border-b border-earth-100 hover:bg-earth-50">
                                         <td className="px-3 py-2">{idx + 1}</td>
+                                        <td className="px-3 py-2 font-mono font-bold text-maroon-700">{member.scoutCode || 'تلقائي'}</td>
                                         <td className="px-3 py-2 font-medium">{member.name}</td>
                                         <td className="px-3 py-2">{member.fatherName || '-'}</td>
                                         <td className="px-3 py-2">{member.motherName || '-'}</td>
