@@ -366,12 +366,12 @@ export default function ImportMembers() {
                     const motherName = row['اسم الأم']?.toString().trim() ||
                         row['اسم الام / الزوجة']?.toString().trim() || '';
 
-                    // ✅ الموبايلات (الموبايل 1 غالباً رقم المنزل، نتجاهله)
+                    // حفظ أرقام الموبايلات الثلاثة كما هي في ملف Excel
                     const mobile1 = row['الموبايل 1'];
                     const mobile2 = row['الموبايل 2'];
                     const mobile3 = row['الموبايل 3'];
 
-                    // نستخدم الموبايل 2 و 3 فقط (الموبايل 1 غالباً رقم منزل)
+                    const mobile1Valid = isValidMobile(mobile1);
                     const phone = isValidMobile(mobile2);
                     const mobile2Valid = isValidMobile(mobile3);
 
@@ -380,8 +380,8 @@ export default function ImportMembers() {
                     const motherPhone = isValidMobile(row['ت. الأم'] || row['ت. الام / الزوجة']);
 
                     // البحث عن الإيميل
-                    let email = '';
-                    for (let key in row) {
+                    let email = row['البريد الإلكتروني']?.toString().trim() || row['الإيميل']?.toString().trim() || '';
+                    if (!email) for (let key in row) {
                         const cell = row[key]?.toString().trim() || '';
                         if (cell.includes('@') && cell.includes('.')) {
                             email = cell;
@@ -398,6 +398,7 @@ export default function ImportMembers() {
                         scoutStage: scoutStage,
                         educationStage: eduStage,
                         email: email,
+                        mobile1: mobile1Valid,
                         phone: phone, // الموبايل 2
                         fatherPhone: fatherPhone,
                         motherPhone: motherPhone,
