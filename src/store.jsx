@@ -556,6 +556,95 @@ export function StoreProvider({ children }) {
     setMembers((p) => [...created, ...p]); cacheInvalidate();
     return created;
   };
+  // مزامنة استيراد Excel مع نفس جدول الأعضاء المستخدم في لوحة الإدارة.
+  // الحقول الفارغة في الملف لا تمسح البيانات الموجودة.
+  const syncMembersFromImport = async (incoming = []) => {
+    const { data: rows, error: loadError } = await supabase
+      .from("members").select("*").order("name");
+    if (loadError) throw loadError;
+
+    const working = (rows ?? []).map(mapMember);
+    const created = [];
+    const updated = [];
+    let skipped = 0;
+    const touched = new Set();
+    const normalize = (value) => String(value ?? "").trim().toLocaleLowerCase("ar");
+
+    for (const raw of incoming) {
+      const name = String(raw?.name ?? "").trim();
+      if (!name) { skipped++; continue; }
+
+      const code = String(raw?.scoutCode ?? "").trim();
+      const number = String(raw?.scoutNumber ?? "").trim();
+      let existing = null;
+
+      if (code) {
+        existing = working.find((m) => normalize(m.scoutCode) === normalize(code)) ?? null;
+        if (existing && normalize(existing.name) !== normalize(name)) {
+          throw new Error(`الكود الكشفي "${code}" مسجل بالفعل باسم "${existing.name}"، راجع الملف قبل الاستيراد.`);
+        }
+      }
+      if (!existing && number) {
+        existing = working.find((m) => normalize(m.scoutNumber) === normalize(number)) ?? null;
+      }
+      if (!existing) {
+        const sameName = working.filter((m) => normalize(m.name) === normalize(name));
+        if (sameName.length === 1) existing = sameName[0];
+        else if (sameName.length > 1) {
+          skipped++;
+          continue;
+        }
+      }
+
+      if (existing && touched.has(existing.id)) {
+        skipped++;
+        continue;
+      }
+
+      if (existing) {
+        const merged = { ...existing };
+        for (const key of [
+          "scoutCode", "name", "fatherName", "motherName", "birthDate",
+          "scoutStage", "educationStage", "email", "phone", "address",
+          "fatherPhone", "motherPhone", "college", "governorate", "confessor",
+          "scoutNumber", "mobile2", "siblingsCount",
+        ]) {
+          const value = raw[key];
+          if (value !== undefined && value !== null && String(value).trim() !== "") {
+            merged[key] = value;
+          }
+        }
+
+        const { data: saved, error } = await supabase
+          .from("members").update(toMemberRow(merged)).eq("id", existing.id).select().single();
+        if (error) throw error;
+        const mapped = mapMember(saved);
+        const index = working.findIndex((m) => m.id === existing.id);
+        if (index >= 0) working[index] = mapped;
+        updated.push(mapped);
+        touched.add(existing.id);
+      } else {
+        let scoutCode = code;
+        if (!scoutCode) scoutCode = generateUniqueScoutCode(raw, working);
+        if (working.some((m) => normalize(m.scoutCode) === normalize(scoutCode))) {
+          throw new Error(`الكود الكشفي "${scoutCode}" مكرر. صحّح الكود في ملف Excel ثم أعد الاستيراد.`);
+        }
+        const { data: saved, error } = await supabase
+          .from("members").insert({ ...toMemberRow({ ...raw, name }), scout_code: scoutCode })
+          .select().single();
+        if (error) throw error;
+        const mapped = mapMember(saved);
+        working.push(mapped);
+        created.push(mapped);
+        touched.add(mapped.id);
+      }
+    }
+
+    setMembers(working);
+    cacheInvalidate();
+    return { created, updated, skipped };
+  };
+
   const updateMember = async (id, data) => {
     const { data: u, error } = await supabase.from("members").update(toMemberRow(data)).eq("id", id).select().single();
     if (error) throw error;
@@ -758,7 +847,7 @@ export function StoreProvider({ children }) {
     addExam, updateExam, deleteExam, submitExamResult, approveExamResult, allowExamRetake,
     addNews, updateNews, deleteNews, submitNewsForm, deleteNewsSubmission,
     addBook, updateBook, deleteBook,
-    addMember, addMembers, updateMember, deleteMember, createMemberAccounts, searchMembers,
+    addMember, addMembers, syncMembersFromImport, updateMember, deleteMember, createMemberAccounts, searchMembers,
     badges, badgeAwards, addBadge, updateBadge, deleteBadge, deleteBadgeAward,
     awardBadge, startBadge, revokeBadge, updateBadgeAward, seedBadges,
     createStaffAccount, updateUser, deleteUser, setUserPassword, setUserEmail,
