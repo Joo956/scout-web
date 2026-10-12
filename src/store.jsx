@@ -77,7 +77,7 @@ const mapBadge = (b) => ({
 const mapMember = (m) => ({
   id: m.id, scoutCode: m.scout_code, name: m.name, fatherName: m.father_name,
   motherName: m.mother_name, birthDate: m.birth_date, scoutStage: m.scout_stage,
-  educationStage: m.education_stage, email: m.email, phone: m.phone,
+  educationStage: m.education_stage, email: m.email, phone: m.phone, mobile1: m.mobile1,
   address: m.address, fatherPhone: m.father_phone, motherPhone: m.mother_phone,
   college: m.college, governorate: m.governorate, confessor: m.confessor,
   scoutNumber: m.scout_number, mobile2: m.mobile2, siblingsCount: m.siblings_count ?? 0,
@@ -87,7 +87,7 @@ const toMemberRow = (m) => ({
   scout_code: m.scoutCode ?? null, name: m.name, father_name: m.fatherName ?? null,
   mother_name: m.motherName ?? null, birth_date: m.birthDate || null,
   scout_stage: m.scoutStage ?? null, education_stage: m.educationStage ?? null,
-  email: m.email ?? null, phone: m.phone ?? null, address: m.address ?? null,
+  email: m.email ?? null, phone: m.phone ?? null, mobile1: m.mobile1 ?? null, address: m.address ?? null,
   father_phone: m.fatherPhone ?? null, mother_phone: m.motherPhone ?? null,
   college: m.college ?? null, governorate: m.governorate ?? null,
   confessor: m.confessor ?? null, scout_number: m.scoutNumber || null,
@@ -604,7 +604,7 @@ export function StoreProvider({ children }) {
       if (existing) {
         const merged = { ...existing };
         for (const key of [
-          "scoutCode", "name", "fatherName", "motherName", "birthDate",
+          "scoutCode", "name", "fatherName", "motherName", "birthDate", "mobile1",
           "scoutStage", "educationStage", "email", "phone", "address",
           "fatherPhone", "motherPhone", "college", "governorate", "confessor",
           "scoutNumber", "mobile2", "siblingsCount",
