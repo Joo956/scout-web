@@ -651,6 +651,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                     <span className="font-mono font-bold text-maroon-700 bg-maroon-50 px-2 py-1 rounded text-xs border border-maroon-100 block text-center whitespace-nowrap">
                                                         {member.scoutCode || "جاري..."}
                                                     </span>
+                                                    {member.scoutNumber && <span className="mt-1 block text-xs text-earth-500 text-center">رقم: {member.scoutNumber}</span>}
                                                     {member.userId ? (
                                                         <span title="الكشاف يدخل بإيميله وكوده الكشافي" className="mt-1 flex justify-center">
                                                             <Badge tone="green">له حساب</Badge>
@@ -672,6 +673,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                     <span className="font-bold text-earth-900 text-sm leading-tight block">
                                                         {member.name}
                                                     </span>
+                                                    {member.birthDate && <span className="mt-1 block text-xs text-earth-500">الميلاد: {member.birthDate}</span>}
                                                 </td>
 
                                                 {/* 3. أب الاعتراف */}
@@ -687,12 +689,9 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                 {/* 5. الأرقام */}
                                                 <td className="px-3 py-3 align-top">
                                                     <div className="space-y-1 text-sm dir-ltr text-right">
-                                                        {member.phone && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-earth-500">📱</span>
-                                                                <span className="text-earth-700 font-medium">{member.phone}</span>
-                                                            </div>
-                                                        )}
+                                                        {member.mobile1 && <div className="flex items-center gap-1.5"><span className="text-earth-500">📱 1</span><span className="text-earth-700">{member.mobile1}</span></div>}
+                                                        {member.phone && <div className="flex items-center gap-1.5"><span className="text-earth-500">📱 2</span><span className="text-earth-700 font-medium">{member.phone}</span></div>}
+                                                        {member.mobile2 && <div className="flex items-center gap-1.5"><span className="text-earth-500">📱 3</span><span className="text-earth-700">{member.mobile2}</span></div>}
                                                         {member.fatherPhone && (
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-earth-500">👨</span>
@@ -705,7 +704,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                                 <span className="text-earth-600">{member.motherPhone}</span>
                                                             </div>
                                                         )}
-                                                        {!member.phone && !member.fatherPhone && !member.motherPhone && (
+                                                        {!member.mobile1 && !member.phone && !member.mobile2 && !member.fatherPhone && !member.motherPhone && (
                                                             <span className="text-earth-400 text-sm">-</span>
                                                         )}
                                                     </div>
@@ -726,6 +725,8 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                 {/* 8. الكلية */}
                                                 <td className="px-3 py-3 align-top text-sm text-earth-700">
                                                     {member.college || '-'}
+                                                    {member.governorate && <span className="mt-1 block text-xs text-earth-500">المنطقة: {member.governorate}</span>}
+                                                    {member.address && <span className="mt-1 block text-xs text-earth-500">العنوان: {member.address}</span>}
                                                 </td>
 
                                                 {/* 9. الإخوة */}
