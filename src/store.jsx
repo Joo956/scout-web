@@ -610,8 +610,13 @@ export function StoreProvider({ children }) {
           "scoutNumber", "mobile2", "siblingsCount",
         ]) {
           const value = raw[key];
-          if (value !== undefined && value !== null && String(value).trim() !== "") {
-            merged[key] = value;
+          // Excel هو المصدر المعتمد: القيم الفارغة في الملف تمسح القيمة القديمة،
+          // ما عدا الكود الكشفي حتى لا نفقد معرّف العضو لو الخانة فاضية.
+          if (key === "scoutCode" && (value === undefined || value === null || String(value).trim() === "")) {
+            continue;
+          }
+          if (value !== undefined) {
+            merged[key] = value === null || String(value).trim() === "" ? null : value;
           }
         }
 
