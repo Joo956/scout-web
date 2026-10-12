@@ -121,8 +121,8 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
         if (readOnly || bulkDeleteBusy || selectedMemberIds.length === 0) return;
         const selectedMembers = members.filter((member) => selectedMemberIds.includes(member.id));
         const confirmed = window.confirm(
-            `هل أنت متأكد من حذف ${selectedMembers.length} كشاف؟\\n` +
-            `سيتم حذف بياناتهم وحسابات الدخول المرتبطة بهم إن وجدت.\\n` +
+            `هل أنت متأكد من حذف ${selectedMembers.length} كشاف؟\n` +
+            `سيتم حذف بياناتهم وحسابات الدخول المرتبطة بهم إن وجدت.\n` +
             "العملية لا يمكن التراجع عنها."
         );
         if (!confirmed) return;
