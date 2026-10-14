@@ -124,24 +124,30 @@ function ShimmerButton({ href, children, className = "" }) {
   );
 }
 
-const HERO_CHIPS = [
-  { emoji: "🏕️", label: "معسكرات", top: "2%", right: "16%" },
-  { emoji: "🎖️", label: "شارات هوايات", top: "28%", right: "-8%" },
-  { emoji: "🧭", label: "ملاحة", top: "60%", right: "-4%" },
-  { emoji: "🤝", label: "أخوة كشفية", top: "82%", right: "26%" },
+
+// ⚜️ قانون الكشافة — 11 وصفة، بتتوزع بالتساوي على الدايرة حوالين اللوجو (حساب زوايا تلقائي)
+const SCOUT_LAWS = [
+  { label: "صادق"  },
+  { label: "مخلص" },
+  { label: "مؤمن"  },
+  { label: "مطيع" },
+  { label: "مفيد" },
+  { label: "مهذب" },
+  { label: "لطيف" },
+  { label: "مقتصد" },
+  { label: "شجاع" },
+  { label: "نظيف" },
+  { label: "بشوش "},
 ];
 const SCOUT_STAGES = [
   { image: "https://i.postimg.cc/G2j09ds8/Screenshot-2026-10-03-005735.png", name: "أشبال / زهرات" },
   { image: "https://i.postimg.cc/GmnjgYfB/Screenshot-2026-10-03-005819.png", name: "كشاف / مرشدات" },
-  { image: "https://i.postimg.cc/SQw5qnPr/Screenshot-2026-10-03-005843.png", name: "متقدم / رائدات" },
+  { image: "https://i.postimg.cc/SQw5qnPr/Screenshot-2026-10-03-005843.png", name: "متقدم / متقدمات" },
   { image: "https://i.postimg.cc/pdGGSr8h/Screenshot-2026-10-03-005834.png", name: "جوالة" },
 ];
 const TICKER = [
-  "⚜️ مجموعة الأنبا إبرام الكشفية",
-  "🏕️ معسكرات وأنشطة على مدار السنة",
-  "🧭 مغامرات كشفية حقيقية",
-  "🤝 أخوة كشفية تدوم مدى الحياة",
-  "🔥 انضم لأكثر من 500 كشاف وقائد",
+"أعد بشرفي أن أبذل جهدي في أن أقوم بما يجب عليّ نحو الله ثم الوطن، وأن أساعد الناس في جميع الظروف، وأن أعمل بقانون الكشافة.","أعد بشرفي أن أبذل جهدي في أن أقوم بما يجب عليّ نحو الله ثم الوطن، وأن أساعد الناس في جميع الظروف، وأن أعمل بقانون الكشافة."
+
 ];
 
 const GALLERY = [
@@ -254,10 +260,7 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { label: "كشاف وقائد", value: "+500", icon: "⚜️" },
-  { label: "نشاط سنوي", value: "+50", icon: "🎯" },
-  { label: "سنوات خبرة", value: "+25", icon: "🏆" },
-  { label: "شارة معتمدة", value: "+120", icon: "🏅" },
+
 ];
 
 const CATEGORY_STYLES = {
@@ -405,39 +408,32 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-earth-50">
-      {/* ============ HERO SECTION ============ */}
-      <section
-        ref={spotlight.ref}
-        onMouseMove={spotlight.onMove}
-        onMouseLeave={spotlight.onLeave}
-        className="relative overflow-hidden bg-gradient-to-br from-maroon-900 via-maroon-800 to-maroon-950"
-      >
-        <div className="absolute inset-0">
-          <motion.img
-            src="/images/Hero.jpg"
-            alt=""
-            className="h-full w-full object-cover object-center"
-            initial={{ scale: 1 }}
-            animate={isMobile ? false : { scale: [1, 1.08, 1] }}
-            transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
-            fetchPriority="high"
-            decoding="async"
-            onError={(e) => (e.currentTarget.style.display = "none")}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-maroon-950/92 via-maroon-900/85 to-maroon-950/95" />
-          <div className="absolute inset-0 bg-maroon-950/35" />
-        </div>
+      <section className="relative overflow-hidden bg-maroon-950">
+{/* ============ HERO BACKGROUND ============ */}
+{(<div className="absolute inset-0">
+  <motion.img
+    src="/images/Hero.jpg"
+    alt=""
+    className="h-full w-full object-cover object-center"
+    initial={{ scale: 1 }}
+    animate={isMobile ? false : { scale: [1, 1.08, 1] }}
+    transition={{
+      duration: 24,
+      repeat: Infinity,
+      ease: "easeInOut",
+    }}
+    fetchPriority="high"
+    decoding="async"
+    onError={(e) => {
+      e.currentTarget.style.display = "none";
+    }}
+  />
 
-        {/* Spotlight */}
-        {!isMobile && (
-          <div
-            className="pointer-events-none absolute inset-0 transition-opacity duration-500"
-            style={{
-              opacity: spotlight.spot.o,
-              background: `radial-gradient(600px circle at ${spotlight.spot.x}px ${spotlight.spot.y}px, rgba(251,191,36,0.14), transparent 45%)`,
-            }}
-          />
-        )}
+  <div className="absolute inset-0 bg-gradient-to-br from-maroon-950/55 via-maroon-900/40 to-maroon-950/65" />
+
+  <div className="absolute inset-0 bg-maroon-950/10" />
+</div>
+   )}
 
         {/* شرارات ذهبية */}
         {!isMobile && (
@@ -554,23 +550,41 @@ export default function HomePage() {
                 </motion.div>
               </div>
 
-              {HERO_CHIPS.map((chip, i) => (
-                <motion.div
-                  key={chip.label}
-                  className="absolute flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-md"
-                  style={{ top: chip.top, right: chip.right }}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
-                  transition={{
-                    opacity: { delay: 0.8 + i * 0.15 },
-                    scale: { delay: 0.8 + i * 0.15, type: "spring" },
-                    y: { duration: 3 + i, repeat: Infinity, ease: "easeInOut", delay: i * 0.5 },
-                  }}
-                >
-                  <span className="text-2xl">{chip.emoji}</span>
-                  <span className="text-xs font-extrabold text-white">{chip.label}</span>
-                </motion.div>
-              ))}
+              {/* ⚜️ قانون الكشافة — 11 وصفة موزعة بالتساوي على الدايرة (حساب زوايا) */}
+              {SCOUT_LAWS.map((chip, i) => {
+                // نبدأ من فوق (-90°) ونلف مع عقارب الساعة — 11 نقطة متساوية على محيط الدايرة
+                const angle = ((-90 + i * (360 / SCOUT_LAWS.length)) * Math.PI) / 180;
+                const radius = 41; // % من نصف الكونتينر
+                const top = 50 + radius * Math.sin(angle);
+                const right = 50 - radius * Math.cos(angle);
+                return (
+                  <div
+                    key={chip.label}
+                    className="absolute"
+                    style={{
+                      top: `${top}%`,
+                      right: `${right}%`,
+                      transform: "translate(50%, -50%)",
+                    }}
+                  >
+                    <motion.div
+                      className="flex items-center gap-1.5 rounded-2xl border border-white/15 bg-white/10 px-3 py-2 shadow-xl backdrop-blur-md"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1, y: [0, -8, 0] }}
+                      transition={{
+                        opacity: { delay: 0.8 + i * 0.12 },
+                        scale: { delay: 0.8 + i * 0.12, type: "spring" },
+                        y: { duration: 3 + (i % 4), repeat: Infinity, ease: "easeInOut", delay: i * 0.4 },
+                      }}
+                    >
+                      <span className="text-base">{chip.emoji}</span>
+                      <span className="text-xs font-extrabold whitespace-nowrap text-white">
+                        {chip.label}
+                      </span>
+                    </motion.div>
+                  </div>
+                );
+              })}
             </motion.div>
           </div>
         </div>
@@ -596,7 +610,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ المراحل الكشفية ============ */}
+     
       {/* ============ المراحل الكشفية ============ */}
       <section className="relative bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">

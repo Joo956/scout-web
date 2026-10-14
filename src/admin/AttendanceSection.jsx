@@ -321,9 +321,9 @@ function StructureTab({
                       onApplied={onRefreshStore}
                     />
 
-                    {/* مسئول الفصل */}
+                    {/* قائد الفصل */}
                     <div className="text-sm">
-                      <span className="text-earth-500 font-bold text-xs">مسئول الفصل: </span>
+                      <span className="text-earth-500 font-bold text-xs">قائد الفصل: </span>
                       {supervisor ? (
                         <span className="inline-flex items-center gap-1">
                           <span className="font-bold text-earth-900">{staffName(supervisor)}</span>
@@ -331,7 +331,7 @@ function StructureTab({
                             type="button"
                             disabled={busy}
                             onClick={() => unassignStaff(supervisor.id)}
-                            title="إلغاء تعيين مسئول الفصل"
+                            title="إلغاء تعيين قائد الفصل"
                             className="text-red-500 hover:text-red-700 disabled:opacity-50 font-bold"
                           >
                             ✕
@@ -341,14 +341,14 @@ function StructureTab({
                         <div className="mt-1">
                           <MemberPicker
                             members={members}
-                            placeholder="ابحث واختر مسئول الفصل..."
+                            placeholder="ابحث واختر قائد الفصل..."
                             onPick={(m) => assignStaff("class_supervisor", pair.key, c.id, m.id)}
                           />
                         </div>
                       )}
                     </div>
 
-                    {/* قادة الفصل (مدرسين) */}
+                    {/* القادة المساعدين */}
                     <div className="text-sm">
                       <span className="text-earth-500 font-bold text-xs">
                         قائد/قائدة الفصل (مدرسين):{" "}
@@ -409,10 +409,10 @@ function StructureTab({
               </div>
             </div>
 
-            {/* توزيع الأعضاء على الفصول */}
+            {/* الأفراد (أعضاء الفصل) */}
             <details className="border-t border-earth-100">
               <summary className="cursor-pointer px-4 py-2.5 text-sm font-bold text-maroon-800 hover:bg-maroon-50 transition select-none">
-                🧑‍🤝‍🧑 توزيع الأعضاء على الفصول
+                🧑‍🤝‍🧑 الأفراد (أعضاء الفصل)
                 {unassigned > 0 && (
                   <span className="mr-2 text-xs bg-gold-100 text-gold-800 px-2 py-0.5 rounded-full">
                     {unassigned} بدون فصل
@@ -654,7 +654,7 @@ function OverviewTab({ members, classes, pushToast, onRefreshStore }) {
 
                     <div className="text-xs space-y-1">
                       <p>
-                        <span className="font-bold text-earth-500">مسئول الفصل: </span>
+                        <span className="font-bold text-earth-500">قائد الفصل: </span>
                         <span
                           className={
                             clsSupervisor
@@ -666,7 +666,7 @@ function OverviewTab({ members, classes, pushToast, onRefreshStore }) {
                         </span>
                       </p>
                       <p>
-                        <span className="font-bold text-earth-500">قادة الفصل: </span>
+                        <span className="font-bold text-earth-500">القادة المساعدين: </span>
                         {leaders.length ? (
                           <span className="font-bold text-earth-900">
                             {leaders.map(staffName).join("، ")}
@@ -1204,7 +1204,7 @@ export default function AttendanceSection({ readOnly = false }) {
   );
 
   // سكان + تسجيل: أدمن أو معيَّن في الهيكل فقط
-  // (قائد/مسئول الفصل + مسئول المرحلة — صلاحيات attendance:write القديمة عرض فقط)
+  // (قائد/قائد الفصل + مسئول المرحلة — صلاحيات attendance:write القديمة عرض فقط)
   const canRecordNow = Boolean(
     scope?.can_record ?? (scope?.is_admin || scope?.assigned)
   );

@@ -20,6 +20,27 @@ import { parseLinks, buildLinksValue, getProductImages } from "../utils/imageLin
 import { sanitizeInput, sanitizeObject } from "../utils/sanitizeInput.js";
 import { useDebounce } from "../hooks/useDebounce.js";
 
+// ExcelJS بيتحمّل عند الطلب بس
+const loadExcel = () => import("exceljs").then((m) => m.default);
+
+// 💰 سكريبت تفعيل أسعار الشراء — بيتنسخ من رسالة التنبيه في إدارة المتجر
+const PRODUCT_COSTS_SQL = `-- 💰 تفعيل أسعار شراء المنتجات (سري للأدمن ومسؤول المتجر)
+create table if not exists public.product_costs (
+    product_id     uuid primary key references public.products(id) on delete cascade,
+    purchase_price numeric not null default 0 check (purchase_price >= 0),
+    updated_at     timestamptz not null default now()
+);
+alter table public.product_costs enable row level security;
+
+create policy "costs read — store managers"
+    on public.product_costs for select
+    using (public.has_permission('store:write'));
+
+create policy "costs write — store managers"
+    on public.product_costs for all
+    using (public.has_permission('store:write'))
+    with check (public.has_permission('store:write'));`;
+
 const PAGE_SIZE = 6;
 
 const fmtRange = (min, max) =>
@@ -673,12 +694,277 @@ function StoreSettingsCard({
   );
 }
 
+/* ───────────── 📥 استيراد منتجات من Excel ───────────── */
+function ProductImportModal({ settings, products, onImport, onClose }) {
+  const [fileName, setFileName] = useState("");
+  const [rows, setRows] = useState(null);
+  const [problems, setProblems] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  // تنزيل القالب الجاهز
+  const downloadTemplate = async () => {
+    const ExcelJS = await loadExcel();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("المنتجات");
+    ws.columns = [
+      { header: "SKU (اختياري)", key: "sku", width: 18 },
+      { header: "اسم المنتج", key: "name", width: 32 },
+      { header: "التصنيف", key: "category", width: 20 },
+      { header: "سعر البيع", key: "price", width: 12 },
+      { header: "سعر الشراء", key: "cost", width: 12 },
+      { header: "مكان الصورة (رابط)", key: "imageUrl", width: 42 },
+      { header: "المخزون", key: "stock", width: 10 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E5E1" } };
+    ws.addRow({
+      sku: "",
+      name: "مثال — امسح السطر ده واكتب منتجاتك",
+      category: settings.categories?.[0]?.name || "مصنفات",
+      price: 160,
+      cost: 90,
+      imageUrl: "https://example.com/pic.jpg",
+      stock: 10,
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    a.download = "قالب-منتجات-المتجر.xlsx";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // قراءة الملف المرفوع
+  const handleFile = async (f) => {
+    setError("");
+    setResult(null);
+    setRows(null);
+    setProblems([]);
+    if (!f) return;
+    setFileName(f.name);
+    setBusy(true);
+    try {
+      const ExcelJS = await loadExcel();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await f.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("الملف فاضي — مفيش شيتات");
+
+      // صف العناوين: أول صف فيه عمود اسم
+      let header = null;
+      let headerNum = 0;
+      ws.eachRow((row, num) => {
+        if (header) return;
+        const vals = [];
+        row.eachCell({ includeEmpty: false }, (c) => vals.push(String(c.value ?? "").trim()));
+        if (vals.some((v) => v.includes("اسم") || v.toLowerCase().includes("sku") || v.includes("المنتج"))) {
+          header = vals;
+          headerNum = num;
+        }
+      });
+      if (!header) throw new Error("مفيش صف عناوين — لازم أول صف فيه «اسم المنتج»");
+
+      const colFor = (names) => header.findIndex((h) => names.some((n) => h.toLowerCase().includes(n)));
+      const cSku = colFor(["sku", "الكود"]);
+      const cName = colFor(["اسم المنتج", "الاسم"]);
+      const cCat = colFor(["تصنيف"]);
+      const cPrice = colFor(["سعر البيع", "البيع"]);
+      const cCost = colFor(["سعر الشراء", "الشراء"]);
+      const cImg = colFor(["صورة"]);
+      const cStock = colFor(["مخزون", "الكمية"]);
+      if (cName === -1) throw new Error("مفيش عمود «اسم المنتج»");
+      if (cPrice === -1) throw new Error("مفيش عمود «سعر البيع»");
+
+      const parsed = [];
+      const probs = [];
+      ws.eachRow((row, num) => {
+        if (num <= headerNum) return;
+        const get = (idx) => {
+          if (idx < 0) return "";
+          const v = row.getCell(idx + 1).value;
+          return String(v && v.text ? v.text : v ?? "").trim();
+        };
+        const name = get(cName);
+        if (!name) return;
+        const price = Number(get(cPrice).replace(/[^\d.]/g, ""));
+        const cost = get(cCost).replace(/[^\d.]/g, "");
+        const r = {
+          name,
+          sku: get(cSku),
+          category: get(cCat),
+          price,
+          purchasePrice: cost === "" ? "" : Number(cost),
+          imageUrl: get(cImg),
+          stock: get(cStock).replace(/[^\d]/g, ""),
+        };
+        if (isNaN(price) || price <= 0) {
+          probs.push(`صف ${num}: «${name}» — سعر البيع ناقص أو غلط`);
+          return;
+        }
+        parsed.push(r);
+      });
+
+      if (parsed.length === 0) {
+        throw new Error(probs[0] || "مفيش صفوف صالحة في الملف");
+      }
+      setRows(parsed);
+      setProblems(probs);
+    } catch (e) {
+      setError(String(e.message || e));
+      setFileName("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doImport = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await onImport(rows);
+      setResult(res);
+      setRows(null);
+      setFileName("");
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="استيراد منتجات من Excel" subtitle="املأ القالب وارفعه — المنتجات هتتضاف والتصنيفات الجديدة هتتعمل تلقائياً" width="sm:max-w-2xl">
+      <div className="space-y-4">
+        {/* الخطوة 1: القالب */}
+        <div className="rounded-xl border border-earth-200 bg-earth-50/70 p-4">
+          <p className="text-sm font-extrabold text-earth-800">1️⃣ نزّل القالب واملأه</p>
+          <p className="mt-1 text-xs text-earth-600">
+            الأعمدة: SKU (اختياري — لو موجود هيتحدث المنتج بدل ما يتعمل جديد) · اسم المنتج · التصنيف (لو جديد هيتعمل لوحده) · سعر البيع · سعر الشراء (سري — للأعضاء مش هيظهر) · مكان الصورة (رابط مباشر) · المخزون
+          </p>
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="mt-2.5 cursor-pointer rounded-lg border border-maroon-200 bg-white px-4 py-2 text-xs font-bold text-maroon-700 transition hover:bg-maroon-50"
+          >
+            ⬇️ تنزيل قالب Excel
+          </button>
+        </div>
+
+        {/* الخطوة 2: الرفع */}
+        <div className="rounded-xl border border-earth-200 bg-earth-50/70 p-4">
+          <p className="text-sm font-extrabold text-earth-800">2️⃣ ارفع الملف المعمول بيه</p>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+            disabled={busy}
+            className="mt-2 block w-full cursor-pointer rounded-lg border border-earth-300 bg-white px-3 py-2 text-xs file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-maroon-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+          />
+          {fileName && <p className="mt-1.5 text-xs font-bold text-earth-600">📄 {fileName}</p>}
+        </div>
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-700">⚠️ {error}</div>
+        )}
+
+        {/* الخطوة 3: المعاينة */}
+        {rows && rows.length > 0 && !result && (
+          <div className="rounded-xl border border-forest-200 bg-forest-50/50 p-4">
+            <p className="text-sm font-extrabold text-forest-800">
+              3️⃣ جاهز للاستيراد — {rows.length} منتج
+            </p>
+            <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-earth-200 bg-white">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-earth-50 text-earth-700">
+                  <tr>
+                    <th className="px-2 py-1.5">الاسم</th>
+                    <th className="px-2 py-1.5">التصنيف</th>
+                    <th className="px-2 py-1.5">البيع</th>
+                    <th className="px-2 py-1.5">الشراء</th>
+                    <th className="px-2 py-1.5">مخزون</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-earth-100">
+                  {rows.map((r, i) => (
+                    <tr key={i}>
+                      <td className="px-2 py-1.5 font-bold text-earth-900">{r.name}</td>
+                      <td className="px-2 py-1.5 text-earth-600">{r.category || "—"}</td>
+                      <td className="px-2 py-1.5 text-earth-700" dir="ltr">{fmtMoney(r.price)}</td>
+                      <td className="px-2 py-1.5 text-earth-700" dir="ltr">{r.purchasePrice === "" ? "—" : fmtMoney(r.purchasePrice)}</td>
+                      <td className="px-2 py-1.5 text-earth-600">{r.stock === "" ? "0" : r.stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {problems.length > 0 && (
+              <p className="mt-2 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-[11px] font-bold text-gold-800">
+                ⚠️ {problems.length} صف اتشالوا بسبب أخطاء: {problems.slice(0, 2).join(" · ")}
+                {problems.length > 2 ? ` — و ${problems.length - 2} تاني` : ""}
+              </p>
+            )}
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setRows(null); setFileName(""); }}
+                className="cursor-pointer rounded-lg border border-earth-200 px-4 py-2 text-xs font-semibold text-earth-700 transition hover:bg-earth-100"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={doImport}
+                disabled={busy}
+                className="cursor-pointer rounded-lg bg-forest-700 px-5 py-2 text-xs font-extrabold text-white transition hover:bg-forest-800 disabled:opacity-60"
+              >
+                {busy ? "جارِ الاستيراد..." : `📥 استيراد ${rows.length} منتج`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* النتيجة */}
+        {result && (
+          <div className="rounded-xl border border-forest-200 bg-forest-50 p-4 text-sm">
+            <p className="font-extrabold text-forest-800">
+              ✅ تم الاستيراد: {result.created} منتج جديد · {result.updated} اتحدث
+              {result.invalid ? ` · ${result.invalid} صف اتشال لخطأ` : ""}
+            </p>
+            {result.newCategories?.length > 0 && (
+              <p className="mt-1.5 text-xs font-bold text-earth-700">
+                🆕 تصنيفات جديدة اتعملت: {result.newCategories.join("، ")}
+              </p>
+            )}
+            {result.costsSkipped > 0 && (
+              <p className="mt-1.5 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-xs font-bold text-gold-800">
+                ⚠️ أسعار الشراء ({result.costsSkipped}) ما اتحفظتش — محتاج تشغيل سكريبت SQL (tools/product-costs.sql) في لوحة Supabase الأول
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-3 cursor-pointer rounded-lg bg-maroon-700 px-5 py-2 text-xs font-bold text-white transition hover:bg-maroon-800"
+            >
+              تمام — قفل
+            </button>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export default function StoreSection({
   products,
   settings,
   onAdd,
   onUpdate,
   onDelete,
+  getProductCosts,
+  setProductCost,
+  onImportProducts,
   onEditInfo,
   onAddCategory,
   onUpdateCategory,
@@ -696,6 +982,56 @@ export default function StoreSection({
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+
+  // 💰 أسعار الشراء — للإدارة فقط: بتتسحب من جدول منفصل الأعضاء مش بيشوفوه
+  const [costs, setCosts] = useState({});
+  const [costDrafts, setCostDrafts] = useState({});
+  const [costsReady, setCostsReady] = useState(false);
+  const [costsNote, setCostsNote] = useState("");
+  const [sqlCopied, setSqlCopied] = useState(false);
+  const [savingCostId, setSavingCostId] = useState(null);
+
+  useEffect(() => {
+    if (readOnly || typeof getProductCosts !== "function") return undefined;
+    let alive = true;
+    (async () => {
+      try {
+        const rows = await getProductCosts();
+        if (!alive) return;
+        const map = {};
+        (rows ?? []).forEach((r) => { map[r.product_id] = Number(r.purchase_price); });
+        setCosts(map);
+        setCostsReady(true);
+      } catch {
+        if (alive) setCostsNote("تفعيل أسعار الشراء محتاج تشغيل سكريبت SQL صغير — موجود في ملف tools/product-costs.sql");
+      }
+    })();
+    return () => { alive = false; };
+  }, [readOnly, getProductCosts]);
+
+  const costOf = (pid) => {
+    const draft = costDrafts[pid];
+    if (draft !== undefined && draft !== "") return Number(draft);
+    return costs[pid] ?? 0;
+  };
+  const saveCost = async (p) => {
+    const draft = costDrafts[p.id];
+    if (draft === undefined) return;
+    const value = Number(draft);
+    const resetDraft = () => setCostDrafts((d) => { const n = { ...d }; delete n[p.id]; return n; });
+    if (draft === "" || isNaN(value) || value < 0 || value === (costs[p.id] ?? 0)) {
+      resetDraft();
+      return;
+    }
+    setSavingCost(p.id);
+    try {
+      await setProductCost(p.id, value);
+      setCosts((c) => ({ ...c, [p.id]: value }));
+      resetDraft();
+    } finally {
+      setSavingCost(null);
+    }
+  };
 
   const emojiFor = (categoryId) =>
     settings.categories.find((c) => c.id === categoryId)?.emoji ?? "📦";
@@ -770,6 +1106,37 @@ export default function StoreSection({
             <p className="mt-1 text-sm text-earth-600">
               إدارة معدات الكشافة وشارات الاستحقاق المتاحة.
             </p>
+            {!readOnly && costsNote && (
+              <div className="mt-2 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2.5 text-xs font-bold text-gold-800">
+                <p>⚠️ {costsNote}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(PRODUCT_COSTS_SQL);
+                        setSqlCopied(true);
+                        setTimeout(() => setSqlCopied(false), 2500);
+                      } catch { /* المتصفح رفض النسخ */ }
+                    }}
+                    className="cursor-pointer rounded-lg bg-gold-500 px-3 py-1.5 text-[11px] font-extrabold text-white transition hover:bg-gold-600"
+                  >
+                    {sqlCopied ? "✅ اتنسخ" : "📋 نسخ سكريبت SQL"}
+                  </button>
+                  <a
+                    href="https://supabase.com/dashboard/project/nvltxoxlwhoyiwdwopce/sql/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer rounded-lg border border-gold-400 bg-white px-3 py-1.5 text-[11px] font-extrabold text-gold-800 transition hover:bg-gold-100"
+                  >
+                    ↗ فتح SQL Editor في Supabase
+                  </a>
+                  <span className="text-[10px] font-semibold text-earth-500">
+                    الصق فيه ← Run ← وارجع هنا وهتعمل تحديث للصفحة
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative">
@@ -782,13 +1149,22 @@ export default function StoreSection({
               />
             </div>
             {!readOnly && (
-              <button
-                type="button"
-                onClick={() => setModal({ kind: "product" })}
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-maroon-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-maroon-800 active:scale-[0.98]"
-              >
-                <PlusIcon className="h-4 w-4" /> إضافة منتج
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setModal({ kind: "import" })}
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-maroon-200 bg-white px-4 py-2.5 text-sm font-bold text-maroon-700 transition hover:bg-maroon-50 active:scale-[0.98]"
+                >
+                  📥 استيراد Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModal({ kind: "product" })}
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-maroon-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-maroon-800 active:scale-[0.98]"
+                >
+                  <PlusIcon className="h-4 w-4" /> إضافة منتج
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -798,11 +1174,17 @@ export default function StoreSection({
             <thead>
               <tr className="border-b-2 border-maroon-100 text-sm font-bold text-maroon-900 uppercase tracking-wide">
                 <th className="pb-3 px-4 w-[10%]">SKU</th>
-                <th className="pb-3 px-4 w-[30%]">اسم المنتج</th>
-                <th className="pb-3 px-4 w-[15%]">التصنيف</th>
-                <th className="pb-3 px-4 w-[15%]">السعر</th>
-                <th className="pb-3 px-4 w-[15%]">حالة المخزون</th>
-                <th className="pb-3 px-4 w-[15%] text-center">إجراءات</th>
+                <th className="pb-3 px-4 w-[26%]">اسم المنتج</th>
+                <th className="pb-3 px-4 w-[13%]">التصنيف</th>
+                <th className="pb-3 px-4 w-[12%]">سعر البيع</th>
+                {costsReady && !readOnly && (
+                  <>
+                    <th className="pb-3 px-4 w-[14%] text-center">سعر الشراء 🔒</th>
+                    <th className="pb-3 px-4 w-[12%] text-center">الربح</th>
+                  </>
+                )}
+                <th className="pb-3 px-4 w-[13%]">حالة المخزون</th>
+                <th className="pb-3 px-4 w-[13%] text-center">إجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-earth-100">
@@ -831,6 +1213,43 @@ export default function StoreSection({
                       {fmtMoney(p.price)}
                     </span>
                   </td>
+                  {/* 💰 سعر الشراء + الربح — للإدارة فقط (مش بيروح للأعضاء) */}
+                  {costsReady && !readOnly && (
+                    <>
+                      <td className="py-4 px-4 align-middle text-center">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          dir="ltr"
+                          value={costDrafts[p.id] ?? (costs[p.id] ?? "")}
+                          onChange={(e) => setCostDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+                          onBlur={() => saveCost(p)}
+                          onKeyDown={(e) => e.key === "Enter" && saveCost(p)}
+                          disabled={savingCostId === p.id}
+                          placeholder="—"
+                          className="w-24 rounded-lg border border-earth-300 px-2 py-1.5 text-xs font-bold text-earth-800 text-center outline-none focus:border-maroon-500 focus:ring-2 focus:ring-maroon-500/30 disabled:opacity-50"
+                        />
+                        {savingCostId === p.id && (
+                          <span className="block text-[10px] font-bold text-earth-400 mt-1">جارِ الحفظ...</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 align-middle text-center">
+                        {costOf(p.id) > 0 ? (() => {
+                          const profit = p.price - costOf(p.id);
+                          const margin = p.price > 0 ? Math.round((profit / p.price) * 100) : 0;
+                          return (
+                            <span className={`inline-flex flex-col leading-tight rounded-lg border px-2.5 py-1 ${profit >= 0 ? "bg-forest-50 border-forest-200 text-forest-800" : "bg-red-50 border-red-200 text-red-700"}`}>
+                              <span className="text-xs font-extrabold" dir="ltr">{fmtMoney(profit)}</span>
+                              <span className="text-[10px] font-bold opacity-70" dir="ltr">{margin}%</span>
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-xs text-earth-400">—</span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   <td className="py-4 px-4 align-middle">
                     {stockBadge(p.stock)}
                   </td>
@@ -864,7 +1283,7 @@ export default function StoreSection({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center">
+                  <td colSpan={costsReady && !readOnly ? "8" : "6"} className="py-12 text-center">
                     <div className="text-earth-300 text-4xl mb-3">📦</div>
                     <p className="text-earth-600 font-medium text-base">لا توجد منتجات مطابقة للبحث</p>
                     <p className="text-earth-500 text-sm mt-1">جرب تغيير كلمات البحث أو أضف منتجاً جديداً</p>
@@ -921,8 +1340,16 @@ export default function StoreSection({
       </Card>
 
       {/* Modals */}
-      {modal?.kind === "product" && (
-        <ProductFormModal
+      {/* 📥 استيراد المنتجات من Excel */}
+      {modal?.kind === "import" && (
+        <ProductImportModal
+          settings={settings}
+          products={products}
+          onImport={onImportProducts}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "product" && (        <ProductFormModal
           initial={modal.initial ?? null}
           categories={settings.categories}
           onClose={() => setModal(null)}

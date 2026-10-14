@@ -52,6 +52,23 @@ const AWARD_STATUS_LABEL = {
   revoked: "ملغي",
 };
 
+// 🚢 مهارات الكشافة البحرية — بتتضرب على المراحل الأربعة (24 شارة)
+const SEA_SKILLS = [
+  { name: "شارة السباحة", emoji: "🏊", desc: "إتمام مسافة سباحة محددة بأمان في البحر أو المسبح مع إتقان قواعد السلامة المائية." },
+  { name: "شارة القوارب والتجديف", emoji: "🛶", desc: "التعامل مع القارب بالمجاديف: الدخول والخروج والتوازن والتجديف الأمامي والخلفي والدوران." },
+  { name: "شارة الإبحار", emoji: "⛵", desc: "فهم أجزاء القارب الشراعي وضبط الشراع والاتجاه حسب الريح وإتمام رحلة إبحار قصيرة بإشراف." },
+  { name: "شارة الملاحة البحرية", emoji: "🧭", desc: "قراءة الخريطة البحرية والبوصلات والمعالم البحرية وحساب الاتجاهات والمسافات." },
+  { name: "شارة العقد والحبال البحرية", emoji: "🪢", desc: "إتقان العقد البحرية الأساسية واستخداماتها في ربط الحبال وتثبيت القوارب." },
+  { name: "شارة الإنقاذ البحري", emoji: "🛟", desc: "أساسيات إنقاذ الغريق: رمي العوامة والاقتراب الصحيح والإسعافات الأولية للغرقى." },
+];
+
+const SEA_STAGES = [
+  { stage: "أشبال / زهرات", level: "مبتدئ", base: 10, step: 5 },
+  { stage: "كشاف / مرشدات", level: "متوسط", base: 25, step: 5 },
+  { stage: "متقدم / متقدمات", level: "متقدم", base: 45, step: 5 },
+  { stage: "جوالة", level: "متخصص", base: 70, step: 5 },
+];
+
 const AWARD_STATUS_TONE = {
   pending_start: "yellow",
   in_progress: "amber",
@@ -336,7 +353,7 @@ function BadgeFormModal({ initial, exams, categories = BADGE_CATEGORIES, onAddCa
               ))}
             </select>
           </Field>
-          <Field label="الحالة">
+          <Field label="الحالة (متاحة للأعضاء ولا لأ؟)">
             <select
               className={inputCls}
               value={form.status || ""}
@@ -344,7 +361,11 @@ function BadgeFormModal({ initial, exams, categories = BADGE_CATEGORIES, onAddCa
             >
               {BADGE_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s === "نشط"
+                    ? "✅ نشط — متاحة للأعضاء يعملوها"
+                    : s === "متوقف"
+                    ? "🚫 متوقف — مش متاحة الموسم ده"
+                    : "📝 مسودة — مخفية تماماً"}
                 </option>
               ))}
             </select>
@@ -1042,6 +1063,9 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
   const debouncedQuery = useDebounce(query, 300);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [scoutStageFilter, setScoutStageFilter] = useState("all");
+  // 🎯 فلتر توفر الشارة للموسم: نشط = متاحة · متوقف = مش متاحة · مسودة = مخفية
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [seedingSea, setSeedingSea] = useState(false);
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -1095,9 +1119,12 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
         categoryFilter === "all" || b.category === categoryFilter;
       const matchesStage =
         scoutStageFilter === "all" || b.scoutStage === scoutStageFilter;
-      return matchesQuery && matchesCategory && matchesStage;
+      // 🎯 فلتر التوفر: نشط = متاحة · متوقف = مش متاحة · مسودة = مخفية
+      const matchesAvailability =
+        availabilityFilter === "all" || b.status === availabilityFilter;
+      return matchesQuery && matchesCategory && matchesStage && matchesAvailability;
     });
-  }, [badges, debouncedQuery, categoryFilter, scoutStageFilter]);
+  }, [badges, debouncedQuery, categoryFilter, scoutStageFilter, availabilityFilter]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages);
@@ -1144,6 +1171,82 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
       });
     } finally {
       setPendingDelete(null);
+    }
+  };
+
+  // 🎯 تشغيل/إيقاف توفر الشارة للموسم بضغطة واحدة
+  const toggleBadgeStatus = async (b) => {
+    const next = b.status === "نشط" ? "متوقف" : "نشط";
+    try {
+      await updateBadge(b.id, { status: next });
+      setNotice({
+        type: "success",
+        message:
+          next === "نشط"
+            ? `«${b.name}» بقت متاحة للعمل عليها.`
+            : `«${b.name}» اتوقفت — الأعضاء هيشوفوها مقفولة.`,
+      });
+    } catch (err) {
+      setNotice({ type: "error", message: `فشل تغيير الحالة: ${err?.message || err}` });
+    }
+  };
+
+  // 🚢 إضافة شارات الكشافة البحرية — 6 مهارات × 4 مراحل، كلها تبدأ «مش متاحة»
+  const seedSeaBadges = async () => {
+    if (seedingSea) return;
+    const existing = new Set(badges.map((b) => b.name));
+    const rows = [];
+    for (const st of SEA_STAGES) {
+      for (const [i, sk] of SEA_SKILLS.entries()) {
+        const name = `${sk.name} — ${st.stage}`;
+        if (existing.has(name)) continue;
+        rows.push({
+          name,
+          nameEn: "",
+          category: "مهارات بحرية",
+          level: st.level,
+          points: st.base + i * st.step,
+          description: `${sk.desc} — شارة من برنامج الكشافة البحرية لمرحلة ${st.stage}.`,
+          requirements:
+            "ناقل لقائد الوحدة الأدلة التي تثبت إتقانك مهارات الشارة، وبعد مراجعتها والاعتماد تحصل على الشارة.",
+          status: "متوقف",
+          iconUrl: "",
+          scoutStage: st.stage,
+          applicationFields: [],
+        });
+      }
+    }
+    if (rows.length === 0) {
+      setNotice({ type: "success", message: "شارات البحرية موجودة كلها بالفعل." });
+      return;
+    }
+    if (
+      !window.confirm(
+        `هيتم إضافة ${rows.length} شارة بحرية بحالة «مش متاحة».\n` +
+          "عدّل على كل شارة (النقاط والوصف) وحط رابط صورتها من اللينك، ولما تحب نزلها اعملها «متاحة».\nمتأكد؟"
+      )
+    )
+      return;
+    setSeedingSea(true);
+    setNotice(null);
+    try {
+      let done = 0;
+      for (const row of rows) {
+        try {
+          await addBadge(row);
+          done++;
+        } catch (e) {
+          if (!String(e?.message || e).includes("duplicate")) throw e;
+        }
+      }
+      setNotice({
+        type: "success",
+        message: `تم إضافة ${done} شارة بحرية 🚢 — كلها «مش متاحة» دلوقتي: عدّل عليها وحط روابط الصور، واعمل «متاحة» للي هينزل السنة دي.`,
+      });
+    } catch (err) {
+      setNotice({ type: "error", message: `فشل إضافة الشارات: ${err?.message || err}` });
+    } finally {
+      setSeedingSea(false);
     }
   };
 
@@ -1329,6 +1432,17 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
                 ))}
               </select>
               <select
+                value={availabilityFilter}
+                onChange={(e) => setAvailabilityFilter(e.target.value)}
+                className={`${inputCls} font-bold`}
+                title="توفر الشارة للموسم"
+              >
+                <option value="all">كل الحالات</option>
+                <option value="نشط">✅ متاحة الموسم ده</option>
+                <option value="متوقف">🚫 مش متاحة</option>
+                <option value="مسودة">📝 مسودة</option>
+              </select>
+              <select
                 value={scoutStageFilter}
                 onChange={(e) => setScoutStageFilter(e.target.value)}
                 className={inputCls}
@@ -1364,6 +1478,17 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
                   >
                     🌱 تهيئة الشارات
                   </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={seedSeaBadges}
+                      disabled={seedingSea}
+                      title="يضيف 24 شارة بحرية (6 مهارات × 4 مراحل) بحالة مش متاحة — تعدل عليها وحط روابط الصور"
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gold-300 bg-gold-50 px-4 py-2.5 text-sm font-bold text-gold-800 transition hover:bg-gold-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      🚢 شارات البحرية
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1402,7 +1527,7 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
 
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   <Badge tone={STATUS_TONE[b.status] ?? "gray"}>
-                    {b.status}
+                    {b.status === "نشط" ? "✅ متاحة" : b.status === "متوقف" ? "🚫 مش متاحة" : b.status}
                   </Badge>
                   <Badge tone={LEVEL_TONE[b.level] ?? "gray"}>
                     {b.level}
@@ -1428,6 +1553,16 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
                   </span>
                   {!readOnly && (
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => toggleBadgeStatus(b)}
+                          className="cursor-pointer rounded-lg p-1.5 text-gold-700 transition hover:bg-gold-50"
+                          title={b.status === "نشط" ? "إيقاف — مش متاحة الموسم ده" : "تشغيل — متاحة للعمل عليها"}
+                        >
+                          {b.status === "نشط" ? "⏸️" : "▶️"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={`تعديل ${b.name}`}

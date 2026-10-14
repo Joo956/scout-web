@@ -10,6 +10,7 @@ export const BADGE_CATEGORIES = [
   "خدمة مجتمع",
   "مهارات تقنية",
   "مهارات متخصصة",
+  "مهارات بحرية",
   "ريادة أعمال",
   "فنون",
   "رياضة",
@@ -46,7 +47,7 @@ export function saveCustomBadgeCategory(name) {
 export const SCOUT_STAGES = [
   "أشبال / زهرات",
   "كشاف / مرشدات",
-  "متقدم / رائدات",
+  "متقدم / متقدمات",
   "جوالة",
 ];
 

@@ -399,6 +399,8 @@ export default function BadgesPage() {
       .filter((b) => {
         // Catalog: hide invisible badges
         if (tab === "catalog" && b.visible === false) return false;
+        // 🎯 المسودات مخفية تماماً عن الأعضاء — «متوقف» بتظهر مقفولة
+        if (tab === "catalog" && b.status === "مسودة") return false;
         // "My Badges" tab: only badges the user has an award for
         if (tab === "my" && !myAwardBadgeIds.has(b.id)) return false;
         // "My Badges" tab: show hidden badges if user earned them
@@ -541,7 +543,9 @@ export default function BadgesPage() {
               const isPendingStart = pendingStartIds.has(badge.id);
               const isRevoked = revokedIds.has(badge.id);
               const award = myAwards.find((a) => a.badge_id === badge.id);
-              const canStart = !isApproved && !isInProgress && !isSubmitted && !isPendingStart;
+              // 🎯 توفر الموسم: الشارة «متوقفة» مش نازلة للعمل عليها السنة دي
+              const isUnavailable = Boolean(badge.status) && badge.status !== "نشط";
+              const canStart = !isApproved && !isInProgress && !isSubmitted && !isPendingStart && !isUnavailable;
 
             return (
               <div
@@ -558,6 +562,8 @@ export default function BadgesPage() {
                     ? "border-yellow-400 bg-yellow-50"
                     : isRevoked
                     ? "border-red-300 bg-red-50"
+                    : isUnavailable
+                    ? "border-earth-300 bg-earth-100/70 opacity-80"
                     : "border-earth-200 bg-white hover:border-maroon-300"
                 }`}
               >
@@ -570,7 +576,10 @@ export default function BadgesPage() {
                   )}
                   {isPendingStart && <span className="text-lg">🟡</span>}
                   {isRevoked && <span className="text-lg">❌</span>}
-                  {!isApproved && !isInProgress && !isSubmitted && !isPendingStart && !isRevoked && (
+                  {!isApproved && !isInProgress && !isSubmitted && !isPendingStart && !isRevoked && isUnavailable && (
+                    <span className="text-lg">🚫</span>
+                  )}
+                  {!isApproved && !isInProgress && !isSubmitted && !isPendingStart && !isRevoked && !isUnavailable && (
                     <span className="text-lg opacity-30">⚪</span>
                   )}
                 </div>
@@ -831,7 +840,19 @@ export default function BadgesPage() {
               !inProgressIds.has(selectedBadge.id) &&
               !submittedIds.has(selectedBadge.id) &&
               !pendingStartIds.has(selectedBadge.id) &&
-              !revokedIds.has(selectedBadge.id) && (
+              !revokedIds.has(selectedBadge.id) &&
+              selectedBadge.status &&
+              selectedBadge.status !== "نشط" && (
+                <div className="rounded-lg border border-earth-300 bg-earth-100 p-3 text-sm font-bold text-earth-700 text-center">
+                  🚫 الشارة دي مش متاحة للعمل عليها الموسم ده — تابعنا لعرفت إمتى تنزل
+                </div>
+              )}
+            {!approvedIds.has(selectedBadge.id) &&
+              !inProgressIds.has(selectedBadge.id) &&
+              !submittedIds.has(selectedBadge.id) &&
+              !pendingStartIds.has(selectedBadge.id) &&
+              !revokedIds.has(selectedBadge.id) &&
+              (!selectedBadge.status || selectedBadge.status === "نشط") && (
                 <button
                   onClick={() => {
                     setSelectedBadge(null);

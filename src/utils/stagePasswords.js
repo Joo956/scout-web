@@ -14,7 +14,7 @@ export const STAGE_PASSWORDS = {
 export const STAGE_PASSWORD_LABELS = {
   ashbal: "أشبال / زهرات",
   kashaf: "كشاف / مرشدات",
-  mutaqaddim: "متقدم / رائدات",
+  mutaqaddim: "متقدم / متقدمات",
   jawwal: "جوال / جوالة",
   qaid: "قائد / قائدة",
   raed: "رائد / رائدة",

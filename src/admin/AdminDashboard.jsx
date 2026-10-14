@@ -69,6 +69,9 @@ export default function AdminDashboard() {
     addProduct: storeAddProduct,
     updateProduct: storeUpdateProduct,
     deleteProduct: storeDeleteProduct,
+    getProductCosts: storeGetProductCosts,
+    setProductCost: storeSetProductCost,
+    importProducts: storeImportProducts,
     deleteBadgeAward: storeDeleteBadgeAward,
     updateOrderStatus: storeUpdateOrderStatus,
     deleteOrder: storeDeleteOrder,
@@ -213,6 +216,7 @@ export default function AdminDashboard() {
   const addProduct = (data) => runWrite(() => storeAddProduct(data), "تم إضافة المنتج");
   const updateProduct = (id, data) => runWrite(() => storeUpdateProduct(id, data), "تم تحديث المنتج");
   const deleteProduct = (id) => runWrite(() => storeDeleteProduct(id), "تم حذف المنتج");
+  const setProductCost = (id, price) => runWrite(() => storeSetProductCost(id, price), "تم حفظ سعر الشراء");
 
   const handleUpdateStoreInfo = (data) => runWrite(() => storeUpdateInfo(data), "تم تحديث معلومات المتجر");
   const addCategory = (data) => runWrite(() => storeAddCategory(data), "تم إضافة الفئة");
@@ -306,6 +310,9 @@ export default function AdminDashboard() {
         onAdd={addProduct}
         onUpdate={updateProduct}
         onDelete={deleteProduct}
+        getProductCosts={storeGetProductCosts}
+        setProductCost={setProductCost}
+        onImportProducts={storeImportProducts}
         onEditInfo={handleUpdateStoreInfo}
         onAddCategory={addCategory}
         onUpdateCategory={updateCategory}
@@ -358,8 +365,8 @@ export default function AdminDashboard() {
             <CompassMarkIcon className="h-5.5 w-5.5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold text-maroon-900">الوحدة 102</p>
-            <p className="truncate text-xs text-earth-500">المنطقة المركزية</p>
+            <p className="truncate text-sm font-extrabold text-maroon-900"> مجموعة  الأنبا   </p>
+            <p className="truncate text-xs text-earth-500"> أبرام الكشفية</p>
           </div>
           <button type="button" aria-label="إغلاق القائمة" onClick={() => setSidebarOpen(false)} className="mr-auto cursor-pointer rounded-lg p-1.5 text-earth-500 hover:bg-maroon-50 lg:hidden">
             <XIcon className="h-5 w-5" />

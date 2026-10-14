@@ -26,10 +26,10 @@ export const STAGE_PAIRS = [
   {
     key: "mutaqaddim",
     male: "متقدم",
-    female: "رائدات",
-    label: "متقدم / رائدات",
+    female: "متقدمات",
+    label: "متقدم / متقدمات",
     maleVariants: ["متقدم"],
-    femaleVariants: ["رائدات"],
+    femaleVariants: ["رائدات", "متقدمات"], // رائدات = التسمية القديمة — بتفضل شغالة
   },
   {
     key: "jawwal",

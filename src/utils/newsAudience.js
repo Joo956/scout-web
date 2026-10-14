@@ -20,7 +20,7 @@ export const NEWS_STAGE_OPTIONS = [
   { value: "كشاف", label: "⚜️ كشاف" },
   { value: "مرشدات", label: "🌼 مرشدات" },
   { value: "متقدم", label: "🎒 متقدم" },
-  { value: "رائدات", label: "🎒 رائدات" },
+  { value: "متقدمات", label: "🎒 متقدمات" },
   { value: "جوالة", label: "🧭 جوالة" },
   { value: "قادة", label: "🎖️ قادة" },
 ];
