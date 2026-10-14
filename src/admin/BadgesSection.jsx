@@ -1174,20 +1174,20 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
     }
   };
 
-  // 🎯 تشغيل/إيقاف توفر الشارة للموسم بضغطة واحدة
-  const toggleBadgeStatus = async (b) => {
-    const next = b.status === "نشط" ? "متوقف" : "نشط";
+  // إخفاء الشارة عن الأعضاء أو إظهارها دون تغيير توفرها للموسم
+  const toggleBadgeVisibility = async (b) => {
+    const next = b.visible === false;
     try {
-      await updateBadge(b.id, { status: next });
+      await updateBadge(b.id, { visible: next });
       setNotice({
         type: "success",
         message:
-          next === "نشط"
-            ? `«${b.name}» بقت متاحة للعمل عليها.`
-            : `«${b.name}» اتوقفت — الأعضاء هيشوفوها مقفولة.`,
+          next
+            ? `«${b.name}» بقت ظاهرة للأعضاء.`
+            : `«${b.name}» اتخفت عن الأعضاء.`,
       });
     } catch (err) {
-      setNotice({ type: "error", message: `فشل تغيير الحالة: ${err?.message || err}` });
+      setNotice({ type: "error", message: `فشل تغيير ظهور الشارة: ${err?.message || err}` });
     }
   };
 
@@ -1556,11 +1556,11 @@ export default function BadgesSection({ readOnly = false, onDeleteAward }) {
                       {!readOnly && (
                         <button
                           type="button"
-                          onClick={() => toggleBadgeStatus(b)}
+                          onClick={() => toggleBadgeVisibility(b)}
                           className="cursor-pointer rounded-lg p-1.5 text-gold-700 transition hover:bg-gold-50"
-                          title={b.status === "نشط" ? "إيقاف — مش متاحة الموسم ده" : "تشغيل — متاحة للعمل عليها"}
+                          title={b.visible === false ? "إظهار للأعضاء" : "إخفاء عن الأعضاء"}
                         >
-                          {b.status === "نشط" ? "⏸️" : "▶️"}
+                          {b.visible === false ? "👁️" : "🙈"}
                         </button>
                       )}
                       <button

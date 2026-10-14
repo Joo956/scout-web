@@ -4,6 +4,7 @@ import MemberLayout from "./MemberLayout.jsx";
 import { parseLinks } from "../utils/imageLinks.js";
 import { SCOUT_STAGES } from "../admin/badges-seed.js";
 import { stageMatches, stageForMember, stagePairLabel } from "../utils/stages.js";
+import { isDriveLink, toViewableDriveUrl } from "../utils/driveLinks.js";
 
 const BADGE_COLORS = {
   "هوايات": "bg-purple-100 text-purple-800",
@@ -24,7 +25,14 @@ const LEVEL_COLORS = {
   "متخصص": "text-red-600",
 };
 
-import { isDriveLink, toViewableDriveUrl } from "../utils/driveLinks.js";
+function shouldDisplayBadge(badge, tab, myAwardBadgeIds) {
+  if (badge.visible === false) return false;
+  if (tab === "catalog" && badge.status === "مسودة") return false;
+  if (tab === "my" && !myAwardBadgeIds.has(badge.id)) {
+    return false;
+  }
+  return true;
+}
 
 /* ── Application Form Modal ─────────────────────────────────── */
 function ApplicationFormModal({ award, badge, exams, onClose, onSubmit }) {
@@ -397,14 +405,7 @@ export default function BadgesPage() {
     () => badges
       .filter((b) => filterCategory === "الكل" || b.category === filterCategory)
       .filter((b) => {
-        // Catalog: hide invisible badges
-        if (tab === "catalog" && b.visible === false) return false;
-        // 🎯 المسودات مخفية تماماً عن الأعضاء — «متوقف» بتظهر مقفولة
-        if (tab === "catalog" && b.status === "مسودة") return false;
-        // "My Badges" tab: only badges the user has an award for
-        if (tab === "my" && !myAwardBadgeIds.has(b.id)) return false;
-        // "My Badges" tab: show hidden badges if user earned them
-        return true;
+        return shouldDisplayBadge(b, tab, myAwardBadgeIds);
       })
       .filter((b) => {
         // Stage filter only applies to catalog tab
