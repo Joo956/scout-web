@@ -203,10 +203,10 @@ export default function StorePage() {
 
   return (
     <MemberLayout active="store">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <div className="mx-auto w-full min-w-0 max-w-6xl px-3 py-6 sm:px-6 sm:py-10">
         {!currentUser && <GuestNotice />}
 
-        <h1 className="text-3xl font-extrabold tracking-tight text-earth-900">
+        <h1 className="text-2xl font-extrabold tracking-tight text-earth-900 sm:text-3xl">
           {settings.title}
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-earth-600">
@@ -226,7 +226,7 @@ export default function StorePage() {
           )}
         </button>
 
-        <div className="mt-5 grid items-start gap-7 lg:grid-cols-[230px_1fr]">
+        <div className="mt-5 grid min-w-0 items-start gap-5 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-7">
           <aside
             className={`space-y-4 ${filtersOpen ? "block" : "hidden"} lg:block`}
           >
@@ -280,8 +280,8 @@ export default function StorePage() {
             </FilterCard>
           </aside>
 
-          <section>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <section className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold tracking-wider text-earth-500 uppercase">
                   الفلاتر النشطة:
@@ -307,7 +307,7 @@ export default function StorePage() {
                 )}
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
                 <div className="relative">
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-earth-400" />
                   <input
@@ -317,7 +317,7 @@ export default function StorePage() {
                       setPage(1);
                     }}
                     placeholder="ابحث عن منتجات..."
-                    className="w-40 rounded-lg border border-earth-200 bg-white py-2 pr-3 pl-9 text-xs shadow-xs transition placeholder:text-earth-400 focus:border-maroon-600 focus:ring-2 focus:ring-maroon-600/25 focus:outline-none sm:w-48"
+                    className="w-full rounded-lg border border-earth-200 bg-white py-2 pr-3 pl-9 text-xs shadow-xs transition placeholder:text-earth-400 focus:border-maroon-600 focus:ring-2 focus:ring-maroon-600/25 focus:outline-none sm:w-48"
                   />
                 </div>
                 <select
@@ -335,13 +335,13 @@ export default function StorePage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:gap-5 xl:grid-cols-3">
               {visible.map((p) => (
                 <article
                   key={p.id}
-                  className="group flex flex-col overflow-hidden rounded-xl border border-earth-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-earth-200 bg-white shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-earth-50 to-earth-100 text-6xl">
+                  <div className="relative flex h-36 items-center justify-center bg-gradient-to-br from-earth-50 to-earth-100 text-6xl sm:h-44">
                     {(() => {
                       const imgs = getProductImages(p.imageUrl);
                       if (imgs.length > 0) {
@@ -379,9 +379,9 @@ export default function StorePage() {
                     )}
                   </div>
 
-                  <div className="flex flex-1 flex-col p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm leading-snug font-bold text-earth-900">
+                  <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <h3 className="min-w-0 flex-1 break-words text-sm leading-snug font-bold text-earth-900">
                         {p.name}
                       </h3>
                       <span className="shrink-0 text-sm font-extrabold text-maroon-800">
@@ -395,7 +395,7 @@ export default function StorePage() {
                       type="button"
                       disabled={p.stock === 0}
                       onClick={() => handleAddToCart(p)}
-                      className={`mt-3.5 w-full rounded-lg px-4 py-2.5 text-xs font-bold tracking-wider uppercase transition active:scale-[0.98] ${
+                      className={`mt-3.5 inline-flex w-full min-w-0 items-center justify-center rounded-lg px-3 py-2.5 text-center text-xs leading-5 font-bold whitespace-normal break-words transition active:scale-[0.98] ${
                         p.stock === 0
                           ? "cursor-not-allowed bg-earth-100 text-earth-400"
                           : orderedId === p.id

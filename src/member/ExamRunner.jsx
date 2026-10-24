@@ -191,7 +191,7 @@ export default function ExamRunner({
   const q = qs[idx];
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-[100] overflow-auto">
+    <div dir="rtl" className="fixed inset-0 z-[100] overflow-x-hidden overflow-y-auto">
       {/* نفس خلفية الموقع (Hero + الطبقة العنابية) — نفس الثيم */}
       <div aria-hidden="true" className="fixed inset-0 z-0">
         <img
@@ -202,11 +202,11 @@ export default function ExamRunner({
         <div className="absolute inset-0 bg-gradient-to-b from-maroon-950/85 via-maroon-900/75 to-maroon-950/90" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-5xl space-y-4 px-3 py-4 sm:space-y-5 sm:px-6 sm:py-8">
         {/* ===== شريط الهوية + المؤقت + زرار الإنهاء ===== */}
         <div className="rounded-2xl border border-maroon-100 bg-white/95 p-4 shadow-xs backdrop-blur sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-bold text-maroon-900">
                 {exam.title}
               </h2>
@@ -229,7 +229,7 @@ export default function ExamRunner({
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <span
                 dir="ltr"
                 className={`rounded-lg border px-2.5 py-1 font-mono text-sm font-bold tabular-nums ${
@@ -260,7 +260,7 @@ export default function ExamRunner({
           )}
         </div>
 
-        <div className="grid items-start gap-5 lg:grid-cols-[250px_1fr]">
+        <div className="grid min-w-0 items-start gap-4 sm:gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
           <AnswerExplorer
             total={qs.length}
             idx={idx}
@@ -270,8 +270,8 @@ export default function ExamRunner({
             className="lg:order-none"
           />
 
-          <div className="rounded-2xl border border-maroon-100 bg-white p-6 shadow-xs sm:p-8 lg:order-none lg:col-start-2 lg:row-start-1">
-            <div className="flex items-center justify-between">
+          <div className="min-w-0 rounded-2xl border border-maroon-100 bg-white p-4 shadow-xs sm:p-8 lg:order-none lg:col-start-2 lg:row-start-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-bold text-earth-700">
                 السؤال {idx + 1} من {qs.length}
               </span>
@@ -286,7 +286,7 @@ export default function ExamRunner({
               />
             </div>
 
-            <p className="mt-6 text-lg font-semibold leading-relaxed text-earth-900">
+            <p className="mt-6 whitespace-pre-wrap break-words text-base font-semibold leading-relaxed text-earth-900 sm:text-lg">
               {q.text}
             </p>
 
@@ -298,7 +298,7 @@ export default function ExamRunner({
                     key={ci}
                     type="button"
                     onClick={() => setAnswers((a) => ({ ...a, [idx]: ci }))}
-                    className={`flex w-full cursor-pointer items-start gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition ${
+                    className={`flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-right text-sm transition sm:px-4 sm:py-3.5 ${
                       selected
                         ? "border-maroon-600 bg-maroon-50 ring-1 ring-maroon-600"
                         : "border-earth-200 bg-white hover:border-maroon-300 hover:bg-maroon-50/40"
@@ -313,7 +313,7 @@ export default function ExamRunner({
                         <span className="h-2 w-2 rounded-full bg-maroon-600" />
                       )}
                     </span>
-                    <span className="font-medium text-earth-900">{choice}</span>
+                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-words font-medium text-earth-900">{choice}</span>
                   </button>
                 );
               })}
@@ -323,23 +323,23 @@ export default function ExamRunner({
               <button
                 type="button"
                 onClick={() => setFlagged((f) => ({ ...f, [idx]: !f[idx] }))}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-bold transition ${
+                className={`flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition sm:px-4 ${
                   flagged[idx]
                     ? "border-gold-500 bg-gold-50 text-gold-800"
                     : "border-earth-200 text-earth-600 hover:bg-earth-50"
                 }`}
               >
                 <PinIcon className="h-3.5 w-3.5" />
-                {flagged[idx] ? "معلمة للمراجعة — إلغاء" : "علّم السؤال للمراجعة"}
+                <span className="break-words">{flagged[idx] ? "معلمة للمراجعة — إلغاء" : "علّم السؤال للمراجعة"}</span>
               </button>
             </div>
 
-            <div className="mt-7 flex items-center justify-between">
+            <div className="mt-7 flex items-center justify-between gap-3">
               <button
                 type="button"
                 disabled={idx === 0}
                 onClick={() => setIdx((i) => i - 1)}
-                className="cursor-pointer rounded-lg border border-earth-200 px-5 py-2.5 text-sm font-semibold text-earth-700 transition hover:bg-earth-100 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-lg border border-earth-200 px-4 py-2.5 text-sm font-semibold text-earth-700 transition hover:bg-earth-100 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5"
               >
                 السابق
               </button>
@@ -347,7 +347,7 @@ export default function ExamRunner({
                 <button
                   type="button"
                   onClick={() => setIdx((i) => i + 1)}
-                  className="cursor-pointer rounded-lg bg-maroon-700 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-800"
+                  className="cursor-pointer rounded-lg bg-maroon-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-800 sm:px-6"
                 >
                   السؤال التالي
                 </button>
@@ -356,7 +356,7 @@ export default function ExamRunner({
                   type="button"
                   onClick={submit}
                   disabled={locked}
-                  className="cursor-pointer rounded-lg bg-maroon-700 px-6 py-2.5 text-sm font-bold text-white uppercase transition hover:bg-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="cursor-pointer rounded-lg bg-maroon-700 px-4 py-2.5 text-sm font-bold text-white uppercase transition hover:bg-maroon-800 disabled:cursor-not-allowed disabled:opacity-60 sm:px-6"
                 >
                   إنهاء الاختبار
                 </button>
