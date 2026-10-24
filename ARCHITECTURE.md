@@ -238,6 +238,7 @@ Custom hash-based router. `App.jsx` uses `useHashRoute()` on `window.location.ha
 | title, author, category, description | text | |
 | cover_url | text | |
 | file_url | text | PDF/file download |
+| is_visible | boolean | Defaults to true; hidden books stay in admin management but are omitted from the member library |
 
 #### `store_settings` — Singleton store config
 | Column | Type | Notes |

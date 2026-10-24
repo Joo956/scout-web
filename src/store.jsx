@@ -42,10 +42,12 @@ const mapOrder = (o) => ({
 const mapBook = (b) => ({
   id: b.id, title: b.title, author: b.author, category: b.category,
   description: b.description, coverUrl: b.cover_url ?? "", fileUrl: b.file_url ?? "",
+  isVisible: b.is_visible ?? true,
 });
 const toBookRow = (b) => ({
   title: b.title, author: b.author || null, category: b.category || null,
   description: b.description || null, cover_url: b.coverUrl || null, file_url: b.fileUrl || null,
+  is_visible: b.isVisible ?? true,
 });
 const mapNews = (n) => ({
   id: n.id, title: n.title, body: n.body, category: n.category, pinned: n.pinned,
@@ -384,6 +386,101 @@ export function StoreProvider({ children }) {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) throw error;
     setProducts((p) => p.filter((x) => x.id !== id)); cacheInvalidate();
+  };
+  const deleteProducts = async (ids) => {
+    if (!ids.length) return;
+    const { error } = await supabase.from("products").delete().in("id", ids);
+    if (error) throw error;
+    const deletedIds = new Set(ids);
+    setProducts((p) => p.filter((product) => !deletedIds.has(product.id)));
+    cacheInvalidate();
+  };
+  const importProducts = async (incoming = []) => {
+    const normalize = (value) => String(value ?? "").trim().toLocaleLowerCase("ar");
+    const nextSettings = { ...storeSettings, categories: [...storeSettings.categories] };
+    const newCategories = [];
+
+    for (const item of incoming) {
+      const categoryName = String(item.category ?? "").trim();
+      if (!categoryName) continue;
+      const categoryExists = nextSettings.categories.some(
+        (category) => normalize(category.name) === normalize(categoryName)
+      );
+      if (!categoryExists) {
+        nextSettings.categories.push({ id: uid(), name: categoryName });
+        newCategories.push(categoryName);
+      }
+    }
+
+    if (newCategories.length > 0) await persistSettings(nextSettings);
+
+    const workingProducts = [...products];
+    const importedProducts = [];
+    let created = 0;
+    let updated = 0;
+    let costsSkipped = 0;
+
+    for (const item of incoming) {
+      const categoryName = String(item.category ?? "").trim();
+      const category = nextSettings.categories.find(
+        (entry) => normalize(entry.name) === normalize(categoryName)
+      );
+      const productData = {
+        name: String(item.name ?? "").trim(),
+        sku: String(item.sku ?? "").trim() || null,
+        category: category?.id ?? null,
+        price: Number(item.price),
+        stock: item.stock === "" || item.stock == null ? 0 : Number(item.stock),
+        imageUrl: String(item.imageUrl ?? "").trim(),
+      };
+      const existing = productData.sku
+        ? workingProducts.find((product) => normalize(product.sku) === normalize(productData.sku))
+        : null;
+      const saved = existing
+        ? await updateProduct(existing.id, productData)
+        : await addProduct(productData);
+
+      if (existing) updated += 1;
+      else created += 1;
+      importedProducts.push(saved);
+      const index = workingProducts.findIndex((product) => product.id === saved.id);
+      if (index >= 0) workingProducts[index] = saved;
+      else workingProducts.push(saved);
+
+      if (item.purchasePrice !== "" && item.purchasePrice != null) {
+        try {
+          await setProductCost(saved.id, Number(item.purchasePrice));
+        } catch (error) {
+          if (error?.code === "42P01" || error?.code === "PGRST205") {
+            costsSkipped += 1;
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+
+    setProducts((current) => {
+      const byId = new Map(current.map((product) => [product.id, product]));
+      importedProducts.forEach((product) => byId.set(product.id, product));
+      return [...byId.values()];
+    });
+    return { created, updated, invalid: 0, costsSkipped, newCategories };
+  };
+  const getProductCosts = async () => {
+    const { data, error } = await supabase
+      .from("product_costs")
+      .select("product_id, purchase_price");
+    if (error) throw error;
+    return data ?? [];
+  };
+  const setProductCost = async (productId, purchasePrice) => {
+    const { error } = await supabase.from("product_costs").upsert({
+      product_id: productId,
+      purchase_price: purchasePrice,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
   };
 
   // ===== Settings =====
@@ -844,7 +941,7 @@ export function StoreProvider({ children }) {
     attendanceScope, refreshData,
     login, logout, changePassword, setOwnPassword,
     cart, addToCart, updateCartQty, removeFromCart, clearCart,
-    addProduct, updateProduct, deleteProduct,
+    addProduct, updateProduct, deleteProduct, deleteProducts, importProducts, getProductCosts, setProductCost,
     updateStoreInfo, addCategory, updateCategory, deleteCategory,
     addPriceRange, updatePriceRange, deletePriceRange,
     addAvailability, updateAvailability, deleteAvailability,

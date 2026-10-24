@@ -13,6 +13,12 @@ import { sendCredentialsEmail } from '../utils/sendCredentialsEmail.js';
 // المرحلة بتنسخ من الملف بنسختها الصح: مذكر يبقى "جوال"، مؤنث تبقى "جوالة"
 const STAGES_MALE = Object.fromEntries(STAGE_PAIRS.map((p) => [p.key, p.male]));
 const STAGES_FEMALE = Object.fromEntries(STAGE_PAIRS.map((p) => [p.key, p.female]));
+const normalizeExcelHeader = (value) =>
+    String(value ?? "")
+        .replace(/^\uFEFF/, "")
+        .replace(/[\u200e\u200f\u202a-\u202e]/g, "")
+        .trim()
+        .replace(/\s+/g, " ");
 
 // ✅ أعمدة قالب الاستيراد — بنفس أسماء الأعمدة اللي المحرك بيقراها حرفياً
 const TEMPLATE_COLUMNS = [
@@ -273,7 +279,7 @@ export default function ImportMembers() {
                   row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     const header = firstSheet.getRow(1).getCell(colNumber).value;
                     if (header) {
-                      obj[header] = cell.value ?? '';
+                      obj[normalizeExcelHeader(header)] = cell.value ?? '';
                     }
                   });
                   jsonData.push(obj);
@@ -389,11 +395,22 @@ export default function ImportMembers() {
                         }
                     }
 
+                    const readColumn = (...headers) => {
+                        for (const header of headers) {
+                            const normalizedHeader = normalizeExcelHeader(header);
+                            if (Object.hasOwn(row, normalizedHeader)) {
+                                const value = row[normalizedHeader];
+                                return value == null ? '' : value.toString().trim();
+                            }
+                        }
+                        return undefined;
+                    };
+
                     processed.push({
                         name: name,
                         fatherName: confessor,
                         motherName: motherName,
-                        college: row['الكلية']?.toString().trim() || row['الكلبة']?.toString().trim() || '',
+                        college: readColumn('الكلية', 'الكلبة'),
                         birthDate: birthDate,
                         scoutStage: scoutStage,
                         educationStage: eduStage,
@@ -403,8 +420,8 @@ export default function ImportMembers() {
                         fatherPhone: fatherPhone,
                         motherPhone: motherPhone,
                         mobile2: mobile2Valid, // الموبايل 3
-                        address: row['العنوان']?.toString().trim() || '',
-                        governorate: row['المنطقة']?.toString().trim() || '',
+                        address: readColumn('العنوان', 'العنوان بالتفصيل'),
+                        governorate: readColumn('المنطقة', 'المحافظة'),
                         confessor: confessor,
                         scoutNumber: row['رقم']?.toString().trim() || '',
                         scoutCode: (row['الكود الكشفي'] ?? row['الكود'] ?? row['Scout Code'] ?? '').toString().trim(),
@@ -613,6 +630,8 @@ export default function ImportMembers() {
                                     <th className="px-3 py-2 text-right border-b">أب الاعتراف</th>
                                     <th className="px-3 py-2 text-right border-b">اسم الأم</th>
                                     <th className="px-3 py-2 text-right border-b">الكلية</th>
+                                    <th className="px-3 py-2 text-right border-b">المنطقة</th>
+                                    <th className="px-3 py-2 text-right border-b">العنوان</th>
                                     <th className="px-3 py-2 text-right border-b">المرحلة</th>
                                     <th className="px-3 py-2 text-right border-b">الميلاد</th>
                                     <th className="px-3 py-2 text-right border-b">عدد الإخوة</th>
@@ -629,6 +648,8 @@ export default function ImportMembers() {
                                         <td className="px-3 py-2">{member.fatherName || '-'}</td>
                                         <td className="px-3 py-2">{member.motherName || '-'}</td>
                                         <td className="px-3 py-2 text-xs">{member.college || '-'}</td>
+                                        <td className="px-3 py-2 text-xs">{member.governorate || '-'}</td>
+                                        <td className="px-3 py-2 text-xs">{member.address || '-'}</td>
                                         <td className="px-3 py-2">
                                             <span className="bg-maroon-100 text-maroon-800 px-2 py-1 rounded text-xs font-bold">
                                                 {member.scoutStage}

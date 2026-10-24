@@ -140,7 +140,7 @@ function LoginRequired() {
       <h1 className="mt-4 text-2xl font-extrabold text-earth-900">سجّل دخولك أولاً</h1>
       <p className="mt-2 max-w-sm text-sm text-earth-600">هذه الصفحة تتطلب تسجيل دخول للوصول إلى بياناتك.</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <a href="#/" className="rounded-lg bg-forest-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-forest-800">تسجيل الدخول</a>
+        <a href="#/login" className="rounded-lg bg-forest-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-forest-800">تسجيل الدخول</a>
         <a href="#/home" className="rounded-lg border border-earth-300 px-6 py-2.5 text-sm font-bold text-earth-800 transition hover:bg-earth-100">العودة للرئيسية</a>
       </div>
     </div>

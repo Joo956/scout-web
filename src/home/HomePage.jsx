@@ -129,15 +129,15 @@ function ShimmerButton({ href, children, className = "" }) {
 const SCOUT_LAWS = [
   { label: "صادق"  },
   { label: "مخلص" },
-  { label: "مؤمن"  },
-  { label: "مطيع" },
-  { label: "مفيد" },
-  { label: "مهذب" },
-  { label: "لطيف" },
-  { label: "مقتصد" },
-  { label: "شجاع" },
+  { label: "نافع "  },
+  { label: "ودود " },
+  { label: "مؤدب " },
+  { label: "رفيق " },
+  { label: "مطيع " },
+  { label: "باش " },
+  { label: "مقتصد " },
   { label: "نظيف" },
-  { label: "بشوش "},
+  { label: "شجاع" },
 ];
 const SCOUT_STAGES = [
   { image: "https://i.postimg.cc/G2j09ds8/Screenshot-2026-10-03-005735.png", name: "أشبال / زهرات" },

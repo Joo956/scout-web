@@ -19,29 +19,22 @@ import { AVAILABILITY_TYPES } from "./data.js";
 import { parseLinks, buildLinksValue, getProductImages } from "../utils/imageLinks.js";
 import { sanitizeInput, sanitizeObject } from "../utils/sanitizeInput.js";
 import { useDebounce } from "../hooks/useDebounce.js";
+import productCostsSql from "../../tools/product-costs.sql?raw";
 
 // ExcelJS بيتحمّل عند الطلب بس
 const loadExcel = () => import("exceljs").then((m) => m.default);
 
-// 💰 سكريبت تفعيل أسعار الشراء — بيتنسخ من رسالة التنبيه في إدارة المتجر
-const PRODUCT_COSTS_SQL = `-- 💰 تفعيل أسعار شراء المنتجات (سري للأدمن ومسؤول المتجر)
-create table if not exists public.product_costs (
-    product_id     uuid primary key references public.products(id) on delete cascade,
-    purchase_price numeric not null default 0 check (purchase_price >= 0),
-    updated_at     timestamptz not null default now()
-);
-alter table public.product_costs enable row level security;
-
-create policy "costs read — store managers"
-    on public.product_costs for select
-    using (public.has_permission('store:write'));
-
-create policy "costs write — store managers"
-    on public.product_costs for all
-    using (public.has_permission('store:write'))
-    with check (public.has_permission('store:write'));`;
-
 const PAGE_SIZE = 6;
+
+function productCostsErrorMessage(error) {
+  if (error?.code === "42P01" || error?.code === "PGRST205") {
+    return "جدول أسعار الشراء غير موجود. شغّل سكريبت tools/product-costs.sql من SQL Editor في Supabase.";
+  }
+  if (error?.code === "42501" || /row-level security|permission denied/i.test(error?.message ?? "")) {
+    return "Supabase رفض الوصول لأسعار الشراء. راجع أن حسابك admin أو أن حساب المشرف لديه store:write، ثم شغّل سياسات tools/product-costs.sql.";
+  }
+  return `تعذر الوصول لأسعار الشراء${error?.message ? `: ${error.message}` : "."}`;
+}
 
 const fmtRange = (min, max) =>
   max === null || max === ""
@@ -79,7 +72,7 @@ function stockBadge(stock) {
   );
 }
 
-function ModalActions({ onClose, submitLabel }) {
+function ModalActions({ onClose, submitLabel, disabled = false }) {
   return (
     <div className="flex justify-end gap-3 pt-2">
       <button
@@ -91,7 +84,8 @@ function ModalActions({ onClose, submitLabel }) {
       </button>
       <button
         type="submit"
-        className="cursor-pointer rounded-lg bg-maroon-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-800"
+        disabled={disabled}
+        className="cursor-pointer rounded-lg bg-maroon-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-800 disabled:cursor-wait disabled:opacity-60"
       >
         {submitLabel}
       </button>
@@ -129,28 +123,41 @@ function SettingsRow({ children, onEdit, onDelete, editLabel, deleteLabel, readO
   );
 }
 
-function SettingsGroup({ title, onAdd, addLabel, emptyText, children, readOnly }) {
+function SettingsGroup({
+  title,
+  onAdd,
+  addLabel,
+  emptyText,
+  children,
+  readOnly,
+  listClassName = "space-y-2",
+  className = "",
+}) {
   return (
-    <div>
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h4 className="text-xs font-bold tracking-wider text-earth-500 uppercase">
+    <section className={`min-w-0 rounded-xl border border-earth-200 bg-earth-50/60 p-4 ${className}`}>
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-earth-200/80 pb-3">
+        <h4 className="text-sm font-extrabold text-maroon-900">
           {title}
         </h4>
         {!readOnly && (
           <button
             type="button"
             onClick={onAdd}
-            className="flex cursor-pointer items-center gap-1 rounded-md bg-maroon-50 px-2.5 py-1.5 text-xs font-bold text-maroon-700 transition hover:bg-maroon-100"
+            className="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-maroon-200 bg-white px-3 py-2 text-xs font-bold text-maroon-700 transition hover:bg-maroon-50"
           >
             <PlusIcon className="h-3.5 w-3.5" /> {addLabel}
           </button>
         )}
       </div>
-      <ul className="space-y-2">
+      <ul className={listClassName}>
         {children}
-        <li className="text-xs text-earth-400">{emptyText}</li>
+        {emptyText && (
+          <li className="rounded-lg border border-dashed border-earth-300 bg-white/70 px-3 py-4 text-center text-xs text-earth-500 md:col-span-full">
+            {emptyText}
+          </li>
+        )}
       </ul>
-    </div>
+    </section>
   );
 }
 
@@ -622,12 +629,14 @@ function StoreSettingsCard({
         )}
       </div>
 
-      <div className="grid gap-6 p-5 pt-4 md:grid-cols-3">
+      <div className="grid items-start gap-4 p-5 pt-4 md:grid-cols-2 xl:grid-cols-4">
         <SettingsGroup
           title="التصنيفات"
           addLabel="إضافة"
           onAdd={onAddCategory}
           readOnly={readOnly}
+          className="md:col-span-2"
+          listClassName="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3"
           emptyText={settings.categories.length === 0 ? "لا توجد تصنيفات بعد." : ""}
         >
           {settings.categories.map((c) => (
@@ -962,6 +971,7 @@ export default function StoreSection({
   onAdd,
   onUpdate,
   onDelete,
+  onDeleteMany,
   getProductCosts,
   setProductCost,
   onImportProducts,
@@ -982,6 +992,9 @@ export default function StoreSection({
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [selectedProductIds, setSelectedProductIds] = useState(() => new Set());
+  const [deleteError, setDeleteError] = useState("");
+  const [deletingProducts, setDeletingProducts] = useState(false);
 
   // 💰 أسعار الشراء — للإدارة فقط: بتتسحب من جدول منفصل الأعضاء مش بيشوفوه
   const [costs, setCosts] = useState({});
@@ -1049,9 +1062,62 @@ export default function StoreSection({
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages);
   const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((product) => selectedProductIds.has(product.id));
 
   // Reset page when debounced search changes
-  useEffect(() => { setPage(1); }, [debouncedQuery]);
+  useEffect(() => {
+    setPage(1);
+    setSelectedProductIds(new Set());
+  }, [debouncedQuery]);
+
+  const toggleAllFilteredProducts = () => {
+    setSelectedProductIds((selected) => {
+      const next = new Set(selected);
+      if (allFilteredSelected) filtered.forEach((product) => next.delete(product.id));
+      else filtered.forEach((product) => next.add(product.id));
+      return next;
+    });
+  };
+
+  const toggleProductSelection = (productId) => {
+    setSelectedProductIds((selected) => {
+      const next = new Set(selected);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deletingProducts) return;
+    setDeletingProducts(true);
+    setDeleteError("");
+    try {
+      if (pendingDelete.kind === "product") {
+        await onDelete(pendingDelete.item.id);
+        setSelectedProductIds((selected) => {
+          const next = new Set(selected);
+          next.delete(pendingDelete.item.id);
+          return next;
+        });
+      } else if (pendingDelete.kind === "products") {
+        await onDeleteMany([...pendingDelete.ids]);
+        setSelectedProductIds((selected) => {
+          const next = new Set(selected);
+          pendingDelete.ids.forEach((id) => next.delete(id));
+          return next;
+        });
+      } else {
+        await deleteTargets[pendingDelete.kind].onConfirm(pendingDelete.item);
+      }
+      setPendingDelete(null);
+    } catch (error) {
+      setDeleteError(error?.message || "تعذر حذف المنتج أو المنتجات المحددة.");
+    } finally {
+      setDeletingProducts(false);
+    }
+  };
 
   const deleteTargets = {
     category: {
@@ -1169,10 +1235,58 @@ export default function StoreSection({
           </div>
         </div>
 
+        {!readOnly && (
+          <div className="mx-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-earth-200 bg-earth-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={toggleAllFilteredProducts}
+                disabled={filtered.length === 0 || deletingProducts}
+                className="cursor-pointer rounded-lg border border-maroon-200 bg-white px-3 py-2 text-xs font-bold text-maroon-700 transition hover:bg-maroon-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {allFilteredSelected ? "إلغاء تحديد النتائج" : `تحديد كل النتائج (${filtered.length})`}
+              </button>
+              <span className="text-sm font-semibold text-earth-700">
+                تم تحديد {selectedProductIds.size} منتج
+              </span>
+            </div>
+            {selectedProductIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError("");
+                  setPendingDelete({ kind: "products", ids: [...selectedProductIds] });
+                }}
+                disabled={deletingProducts}
+                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                حذف المحدد ({selectedProductIds.size})
+              </button>
+            )}
+          </div>
+        )}
+        {deleteError && (
+          <p role="alert" className="mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            ⚠️ {deleteError}
+          </p>
+        )}
+
         <div className="overflow-x-auto p-5 pt-4">
-          <table className="w-full min-w-[700px] text-right text-sm">
+          <table className="w-full min-w-[760px] text-right text-sm">
             <thead>
               <tr className="border-b-2 border-maroon-100 text-sm font-bold text-maroon-900 uppercase tracking-wide">
+                {!readOnly && (
+                  <th className="pb-3 px-3 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="تحديد كل نتائج البحث"
+                      checked={allFilteredSelected}
+                      onChange={toggleAllFilteredProducts}
+                      disabled={filtered.length === 0 || deletingProducts}
+                      className="h-4 w-4 cursor-pointer accent-maroon-700 disabled:cursor-not-allowed"
+                    />
+                  </th>
+                )}
                 <th className="pb-3 px-4 w-[10%]">SKU</th>
                 <th className="pb-3 px-4 w-[26%]">اسم المنتج</th>
                 <th className="pb-3 px-4 w-[13%]">التصنيف</th>
@@ -1189,7 +1303,19 @@ export default function StoreSection({
             </thead>
             <tbody className="divide-y divide-earth-100">
               {rows.map((p) => (
-                <tr key={p.id} className="transition hover:bg-maroon-50/40">
+                <tr key={p.id} className={`transition hover:bg-maroon-50/40 ${selectedProductIds.has(p.id) ? "bg-maroon-50/60" : ""}`}>
+                  {!readOnly && (
+                    <td className="py-4 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`تحديد ${p.name}`}
+                        checked={selectedProductIds.has(p.id)}
+                        onChange={() => toggleProductSelection(p.id)}
+                        disabled={deletingProducts}
+                        className="h-4 w-4 cursor-pointer accent-maroon-700 disabled:cursor-not-allowed"
+                      />
+                    </td>
+                  )}
                   <td className="py-4 px-4 align-middle">
                     <code className="font-mono text-xs font-bold text-maroon-700 bg-maroon-50 px-2 py-1.5 rounded border border-maroon-100 block text-center">
                       {p.sku}
@@ -1283,7 +1409,7 @@ export default function StoreSection({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={costsReady && !readOnly ? "8" : "6"} className="py-12 text-center">
+                  <td colSpan={costsReady && !readOnly ? "9" : !readOnly ? "7" : "6"} className="py-12 text-center">
                     <div className="text-earth-300 text-4xl mb-3">📦</div>
                     <p className="text-earth-600 font-medium text-base">لا توجد منتجات مطابقة للبحث</p>
                     <p className="text-earth-500 text-sm mt-1">جرب تغيير كلمات البحث أو أضف منتجاً جديداً</p>
@@ -1396,22 +1522,24 @@ export default function StoreSection({
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title={
-          pendingDelete?.kind === "product"
+          pendingDelete?.kind === "products"
+            ? "حذف المنتجات المحددة"
+            : pendingDelete?.kind === "product"
             ? "حذف المنتج"
             : deleteTargets[pendingDelete?.kind]?.title ?? "حذف"
         }
         message={
-          pendingDelete?.kind === "product"
+          pendingDelete?.kind === "products"
+            ? `هل أنت متأكد من حذف ${pendingDelete.ids.length} منتج؟ لا يمكن التراجع عن هذا الإجراء.`
+            : pendingDelete?.kind === "product"
             ? `هل أنت متأكد من حذف "${pendingDelete?.item?.name}"؟ لا يمكن التراجع عن هذا الإجراء.`
             : deleteTargets[pendingDelete?.kind]?.message?.(pendingDelete?.item)
         }
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete.kind === "product")
-            onDelete(pendingDelete.item.id);
-          else deleteTargets[pendingDelete.kind].onConfirm(pendingDelete.item);
-          setPendingDelete(null);
+        confirmLabel={deletingProducts ? "جاري الحذف..." : "حذف"}
+        onCancel={() => {
+          if (!deletingProducts) setPendingDelete(null);
         }}
+        onConfirm={confirmDelete}
       />
     </div>
   );

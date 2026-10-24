@@ -69,6 +69,7 @@ export default function AdminDashboard() {
     addProduct: storeAddProduct,
     updateProduct: storeUpdateProduct,
     deleteProduct: storeDeleteProduct,
+    deleteProducts: storeDeleteProducts,
     getProductCosts: storeGetProductCosts,
     setProductCost: storeSetProductCost,
     importProducts: storeImportProducts,
@@ -215,7 +216,14 @@ export default function AdminDashboard() {
 
   const addProduct = (data) => runWrite(() => storeAddProduct(data), "تم إضافة المنتج");
   const updateProduct = (id, data) => runWrite(() => storeUpdateProduct(id, data), "تم تحديث المنتج");
-  const deleteProduct = (id) => runWrite(() => storeDeleteProduct(id), "تم حذف المنتج");
+  const deleteProduct = async (id) => {
+    await storeDeleteProduct(id);
+    pushToast("تم حذف المنتج");
+  };
+  const deleteProducts = async (ids) => {
+    await storeDeleteProducts(ids);
+    pushToast(`تم حذف ${ids.length} منتج`);
+  };
   const setProductCost = (id, price) => runWrite(() => storeSetProductCost(id, price), "تم حفظ سعر الشراء");
 
   const handleUpdateStoreInfo = (data) => runWrite(() => storeUpdateInfo(data), "تم تحديث معلومات المتجر");
@@ -249,6 +257,10 @@ export default function AdminDashboard() {
 
   const addBook = (data) => runWrite(() => storeAddBook(data), "تم إضافة الكتاب");
   const updateBook = (id, data) => runWrite(() => storeUpdateBook(id, data), "تم تحديث الكتاب");
+  const toggleBookVisibility = async (book) => {
+    await storeUpdateBook(book.id, book);
+    pushToast("تم تحديث الكتاب");
+  };
   const deleteBook = (id) => runWrite(() => storeDeleteBook(id), "تم حذف الكتاب");
 
   const addMember = async (data) => {
@@ -310,6 +322,7 @@ export default function AdminDashboard() {
         onAdd={addProduct}
         onUpdate={updateProduct}
         onDelete={deleteProduct}
+        onDeleteMany={deleteProducts}
         getProductCosts={storeGetProductCosts}
         setProductCost={setProductCost}
         onImportProducts={storeImportProducts}
@@ -327,7 +340,7 @@ export default function AdminDashboard() {
       />
     ),
         orders: <OrdersSection orders={orders} onUpdateStatus={updateOrderStatus} onDelete={deleteOrder} products={products} profiles={profiles} readOnly={isReadOnly("orders")} />,
-    library: <LibrarySection books={books} onAdd={addBook} onUpdate={updateBook} onDelete={deleteBook} readOnly={isReadOnly("library")} />,
+    library: <LibrarySection books={books} onAdd={addBook} onUpdate={updateBook} onToggleVisibility={toggleBookVisibility} onDelete={deleteBook} readOnly={isReadOnly("library")} />,
     news: <NewsSection news={news} onAdd={addNews} onUpdate={updateNews} onDelete={deleteNews} readOnly={isReadOnly("news")} />,
     badges: <BadgesSection onDeleteAward={deleteBadgeAward} />,
   };

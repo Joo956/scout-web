@@ -14,20 +14,35 @@ import {
   Modal,
   inputCls,
 } from "./ui.jsx";
+import {
+  getLibraryCategory,
+  LIBRARY_CATEGORIES,
+} from "../utils/libraryCategories.js";
 
 function BookFormModal({ initial, onClose, onSubmit }) {
   const isEdit = Boolean(initial);
   const [form, setForm] = useState(
-    initial ?? {
-      title: "",
-      author: "",
-      category: "",
-      description: "",
-      coverUrl: "",
-      fileUrl: "",
-    }
+    initial
+      ? {
+          title: initial.title ?? "",
+          author: initial.author ?? "",
+          category: initial.category ?? "",
+          description: initial.description ?? "",
+          coverUrl: initial.coverUrl ?? "",
+          fileUrl: initial.fileUrl ?? "",
+        }
+      : {
+          title: "",
+          author: "",
+          category: "",
+          description: "",
+          coverUrl: "",
+          fileUrl: "",
+        }
   );
   const [errors, setErrors] = useState({});
+  const hasLegacyCategory =
+    form.category && !getLibraryCategory(form.category);
 
   const set = (name) => (e) =>
     setForm((f) => ({ ...f, [name]: e.target.value }));
@@ -36,6 +51,7 @@ function BookFormModal({ initial, onClose, onSubmit }) {
     e.preventDefault();
     const next = {};
     if (!form.title.trim()) next.title = "عنوان الكتاب مطلوب.";
+    if (!form.category.trim()) next.category = "اختر مجلد الكتاب.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onSubmit({
@@ -74,13 +90,24 @@ function BookFormModal({ initial, onClose, onSubmit }) {
               placeholder="مثال: جمعية الكشافة"
             />
           </Field>
-          <Field label="التصنيف">
-            <input
+          <Field label="مجلد الكتاب" required error={errors.category}>
+            <select
               className={inputCls}
               value={form.category}
               onChange={set("category")}
-              placeholder="مثال: تدريب / أدلة"
-            />
+            >
+              <option value="">اختر المجلد</option>
+              {LIBRARY_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+              {hasLegacyCategory && (
+                <option value={form.category}>
+                  التصنيف السابق: {form.category}
+                </option>
+              )}
+            </select>
           </Field>
         </div>
         <Field label="الوصف">
@@ -129,16 +156,45 @@ function BookFormModal({ initial, onClose, onSubmit }) {
   );
 }
 
-export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readOnly = false }) {
+export default function LibrarySection({ books, onAdd, onUpdate, onToggleVisibility, onDelete, readOnly = false }) {
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("الكل");
   const [modal, setModal] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [visibilityBusyId, setVisibilityBusyId] = useState(null);
+  const [visibilityError, setVisibilityError] = useState("");
 
-  const filtered = books.filter((b) =>
-    `${b.title} ${b.author} ${b.category}`
+  const toggleVisibility = async (book) => {
+    setVisibilityBusyId(book.id);
+    setVisibilityError("");
+    try {
+      await onToggleVisibility({ ...book, isVisible: book.isVisible === false });
+    } catch (error) {
+      setVisibilityError(error?.message || "تعذر تغيير ظهور الكتاب.");
+    } finally {
+      setVisibilityBusyId(null);
+    }
+  };
+
+  const uncategorizedCount = books.filter(
+    (book) => !getLibraryCategory(book.category)
+  ).length;
+  const categoryFilters = [
+    "الكل",
+    ...LIBRARY_CATEGORIES,
+    ...(uncategorizedCount > 0 ? ["غير مصنف"] : []),
+  ];
+  const filtered = books.filter((book) => {
+    const matchesCategory =
+      categoryFilter === "الكل" ||
+      (categoryFilter === "غير مصنف"
+        ? !getLibraryCategory(book.category)
+        : getLibraryCategory(book.category) === categoryFilter);
+    const matchesQuery = `${book.title} ${book.author} ${book.category}`
       .toLowerCase()
-      .includes(query.toLowerCase())
-  );
+      .includes(query.toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
 
   return (
     <div className="space-y-6">
@@ -149,7 +205,7 @@ export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readO
               إدارة المكتبة
             </h3>
             <p className="mt-0.5 text-xs text-earth-600">
-              أضف كتب التدريب والأدلة والمراجع للأعضاء.
+              رتّب الكتب في المجلدات الاجتماعية والثقافية والكشفية والروحية.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -173,6 +229,47 @@ export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readO
             )}
           </div>
         </div>
+        <div className="flex flex-wrap gap-2 px-5 pt-4">
+          {categoryFilters.map((category) => {
+            const count =
+              category === "الكل"
+                ? books.length
+                : category === "غير مصنف"
+                  ? uncategorizedCount
+                  : books.filter(
+                      (book) => getLibraryCategory(book.category) === category
+                    ).length;
+            const isSelected = categoryFilter === category;
+            return (
+              <button
+                key={category}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => setCategoryFilter(category)}
+                className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                  isSelected
+                    ? "border-maroon-700 bg-maroon-700 text-white"
+                    : "border-earth-200 bg-white text-earth-700 hover:border-maroon-300 hover:bg-maroon-50"
+                }`}
+              >
+                <span aria-hidden="true">📁</span>
+                {category}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    isSelected ? "bg-white/20" : "bg-earth-100"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {visibilityError && (
+          <p role="alert" className="mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            ⚠️ {visibilityError}
+          </p>
+        )}
         <div className="overflow-x-auto p-5 pt-4">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
@@ -212,15 +309,20 @@ export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readO
                             {b.description}
                           </p>
                         )}
+                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${b.isVisible === false ? "bg-earth-200 text-earth-600" : "bg-forest-100 text-forest-800"}`}>
+                          {b.isVisible === false ? "مخفي عن الأعضاء" : "ظاهر للأعضاء"}
+                        </span>
                       </div>
                     </div>
                   </td>
                   <td className="py-3.5 text-earth-700">{b.author || "—"}</td>
                   <td className="py-3.5">
                     {b.category ? (
-                      <Badge tone="maroon">{b.category}</Badge>
+                      <Badge tone="maroon">
+                        {getLibraryCategory(b.category) ?? b.category}
+                      </Badge>
                     ) : (
-                      <span className="text-earth-400">—</span>
+                      <Badge tone="gray">غير مصنف</Badge>
                     )}
                   </td>
                   <td className="py-3.5">
@@ -242,6 +344,20 @@ export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readO
                       <span className="text-earth-400">—</span>
                     ) : (
                       <div className="flex justify-end gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={b.isVisible === false ? `إظهار ${b.title} للأعضاء` : `إخفاء ${b.title} عن الأعضاء`}
+                          title={b.isVisible === false ? "إظهار للأعضاء" : "إخفاء عن الأعضاء"}
+                          onClick={() => toggleVisibility(b)}
+                          disabled={visibilityBusyId === b.id}
+                          className={`cursor-pointer rounded-lg px-2 py-1.5 text-xs font-bold transition disabled:cursor-wait disabled:opacity-50 ${b.isVisible === false ? "text-forest-700 hover:bg-forest-50" : "text-earth-600 hover:bg-earth-100"}`}
+                        >
+                          {visibilityBusyId === b.id
+                            ? "..."
+                            : b.isVisible === false
+                              ? "👁️ إظهار"
+                              : "🙈 إخفاء"}
+                        </button>
                         <button
                           type="button"
                           aria-label={`Edit ${b.title}`}
@@ -270,7 +386,9 @@ export default function LibrarySection({ books, onAdd, onUpdate, onDelete, readO
                       <BookIcon className="h-6 w-6" />
                     </span>
                     <p className="mt-3 text-sm text-earth-500">
-                      لا توجد كتب مضافة بعد — اضغط "إضافة كتاب" لإنشاء أول كتاب.
+                      {books.length === 0
+                        ? 'لا توجد كتب مضافة بعد — اضغط "إضافة كتاب" لإنشاء أول كتاب.'
+                        : "لا توجد كتب في هذا المجلد تطابق البحث."}
                     </p>
                   </td>
                 </tr>

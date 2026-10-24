@@ -225,7 +225,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                 name: "", fatherName: "", motherName: "",
                 fatherPhone: "", motherPhone: "", phone: "",
                 birthDate: "", scoutStage: "كشاف", educationStage: "",
-                email: "", address: "", governorate: "",
+                email: "", college: "", address: "", governorate: "",
             });
             setShowAddForm(false);
 
@@ -535,6 +535,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                     <option value="جامعة">جامعة</option>
                                     <option value="متخرج">متخرج</option>
                                 </select>
+                                <input placeholder="الكلية" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.college} onChange={e => setNewMember({ ...newMember, college: e.target.value })} />
                                 <div>
                                     <input required type="email" placeholder="البريد الإلكتروني" className="border border-earth-300 rounded-lg px-3 py-2 w-full" value={newMember.email} onChange={e => setNewMember({ ...newMember, email: e.target.value })} />
                                     {emailTakenByOther(newMember.email, null) && (
@@ -544,7 +545,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                 <input placeholder="هاتف الكشاف" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.phone} onChange={e => setNewMember({ ...newMember, phone: e.target.value })} />
                                 <input placeholder="هاتف الأب" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.fatherPhone} onChange={e => setNewMember({ ...newMember, fatherPhone: e.target.value })} />
                                 <input placeholder="هاتف الأم" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.motherPhone} onChange={e => setNewMember({ ...newMember, motherPhone: e.target.value })} />
-                                <input placeholder="المحافظة" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.governorate} onChange={e => setNewMember({ ...newMember, governorate: e.target.value })} />
+                                <input placeholder="المنطقة" className="border border-earth-300 rounded-lg px-3 py-2" value={newMember.governorate} onChange={e => setNewMember({ ...newMember, governorate: e.target.value })} />
                                 <input placeholder="العنوان بالتفصيل" className="border border-earth-300 rounded-lg px-3 py-2 md:col-span-2" value={newMember.address} onChange={e => setNewMember({ ...newMember, address: e.target.value })} />
                             </div>
                             <div className="flex justify-end gap-2 pt-2">
@@ -615,7 +616,9 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[13%]">الأرقام</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[8%]">الكشفية</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[8%]">الدراسية</th>
-                                        <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[10%]">الكلية</th>
+                                        <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[8%]">الكلية</th>
+                                        <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[8%]">المنطقة</th>
+                                        <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[12%]">العنوان</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[5%]">الإخوة</th>
                                         <th className="px-3 py-3 text-right font-bold text-maroon-900 text-sm w-[10%]">الإيميل</th>
                                         <th className="px-3 py-3 text-center font-bold text-maroon-900 text-sm w-[4%] sticky left-0 bg-maroon-50 z-10">إجراءات</th>
@@ -624,7 +627,7 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                 <tbody className="divide-y divide-earth-100">
                                     {paginatedMembers.length === 0 ? (
                                         <tr>
-                                            <td colSpan={readOnly ? 11 : 12} className="px-4 py-8 text-center text-earth-500 text-base">
+                                            <td colSpan={readOnly ? 13 : 14} className="px-4 py-8 text-center text-earth-500 text-base">
                                                 {searchQuery || stageFilter
                                                     ? "لا توجد نتائج مطابقة."
                                                     : "لا يوجد أعضاء مسجلين حتى الآن."}
@@ -725,11 +728,19 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                                 {/* 8. الكلية */}
                                                 <td className="px-3 py-3 align-top text-sm text-earth-700">
                                                     {member.college || '-'}
-                                                    {member.governorate && <span className="mt-1 block text-xs text-earth-500">المنطقة: {member.governorate}</span>}
-                                                    {member.address && <span className="mt-1 block text-xs text-earth-500">العنوان: {member.address}</span>}
                                                 </td>
 
-                                                {/* 9. الإخوة */}
+                                                {/* 9. المنطقة */}
+                                                <td className="px-3 py-3 align-top text-sm text-earth-700">
+                                                    {member.governorate || '-'}
+                                                </td>
+
+                                                {/* 10. العنوان */}
+                                                <td className="px-3 py-3 align-top text-sm text-earth-700">
+                                                    {member.address || '-'}
+                                                </td>
+
+                                                {/* 11. الإخوة */}
                                                 <td className="px-3 py-3 align-top text-center">
                                                     <span className={`inline-block px-2 py-1 rounded text-sm font-bold ${member.siblingsCount > 0
                                                         ? 'bg-blue-100 text-blue-800'
@@ -882,6 +893,10 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="text-xs text-earth-600 font-bold">الكلية</label>
+                                    <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.college || ""} onChange={e => setEditingMember({ ...editingMember, college: e.target.value })} />
+                                </div>
+                                <div>
                                     <label className="text-xs text-earth-600 font-bold">البريد الإلكتروني</label>
                                     <input required type="email" className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} />
                                     {emailTakenByOther(editingMember.email, editingMember.id) && (
@@ -901,12 +916,12 @@ export default function MembersSection({ members = [], onAdd, onUpdate, onDelete
                                     <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.motherPhone} onChange={e => setEditingMember({ ...editingMember, motherPhone: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-earth-600 font-bold">المحافظة</label>
-                                    <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.governorate} onChange={e => setEditingMember({ ...editingMember, governorate: e.target.value })} />
+                                    <label className="text-xs text-earth-600 font-bold">المنطقة</label>
+                                    <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.governorate || ""} onChange={e => setEditingMember({ ...editingMember, governorate: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="text-xs text-earth-600 font-bold">العنوان</label>
-                                    <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.address} onChange={e => setEditingMember({ ...editingMember, address: e.target.value })} />
+                                    <input className="w-full border border-earth-300 rounded-lg px-3 py-2 mt-1" value={editingMember.address || ""} onChange={e => setEditingMember({ ...editingMember, address: e.target.value })} />
                                 </div>
                             </div>
 

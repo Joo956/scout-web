@@ -1,6 +1,6 @@
 -- ============================================================
 -- 💰 تفعيل أسعار شراء المنتجات (سعر الشراء — سري للأدمن ومسؤول المتجر)
--- التشغيل مرة واحدة: لوحة Supabase ← SQL Editor ← الصق ده ← Run
+-- لوحة Supabase ← SQL Editor ← الصق ده ← Run. يمكن تشغيله أكثر من مرة.
 -- ============================================================
 
 -- 1) جدول أسعار الشراء — منفصل عن المنتجات عشان الأعضاء ما يشوفوهوش أبداً
@@ -12,24 +12,38 @@ create table if not exists public.product_costs (
 
 alter table public.product_costs enable row level security;
 
--- 2) القراءة: للأدمن أو مسؤول المتجر (صلاحية store:write) فقط
+grant select, insert, update, delete on table public.product_costs to authenticated;
+
+drop policy if exists "costs read — store managers" on public.product_costs;
+drop policy if exists "costs write — store managers" on public.product_costs;
+drop policy if exists "costs insert — store managers" on public.product_costs;
+drop policy if exists "costs update — store managers" on public.product_costs;
+drop policy if exists "costs delete — store managers" on public.product_costs;
+
+-- القراءة: للأدمن أو مسؤول المتجر (صلاحية store:write) فقط
 create policy "costs read — store managers"
     on public.product_costs
     for select
-    using (public.has_permission('store:write'));
+    to authenticated
+    using (public.is_admin() OR public.has_permission('store:write'));
 
--- 3) الكتابة والتعديل والحذف: نفس الصلاحية
-create policy "costs write — store managers"
+create policy "costs insert — store managers"
     on public.product_costs
-    for all
-    using (public.has_permission('store:write'))
-    with check (public.has_permission('store:write'));
+    for insert
+    to authenticated
+    with check (public.is_admin() OR public.has_permission('store:write'));
 
--- 4) (اختياري للحماية القصوى) منع الأعضاء من قراءة عمود سعر الشراء
---    لو ركبته، مفيش حد يقدر يسأل عن العمود ده من الـ API حتى بالفحص اليدوي.
---    ملحوظة: شيل علامتي -- من السطرين لو حابب تشغله:
--- revoke select (purchase_price) on public.products from anon;
--- revoke select (purchase_price) on public.products from authenticated;
+create policy "costs update — store managers"
+    on public.product_costs
+    for update
+    to authenticated
+    using (public.is_admin() OR public.has_permission('store:write'))
+    with check (public.is_admin() OR public.has_permission('store:write'));
 
--- ✅ كده عمود «سعر الشراء» هيظهر في إدارة المتجر للإدارة فقط،
---    والأعضاء مش هيشوفوه في الموقع ولا في بياناتهم القادمة من السيرفر.
+create policy "costs delete — store managers"
+    on public.product_costs
+    for delete
+    to authenticated
+    using (public.is_admin() OR public.has_permission('store:write'));
+
+-- لا توجد أسعار شراء في public.products؛ هذه البيانات موجودة فقط في product_costs.
