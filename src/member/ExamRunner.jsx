@@ -286,7 +286,7 @@ export default function ExamRunner({
               />
             </div>
 
-            <p className="mt-6 whitespace-pre-wrap break-words text-base font-semibold leading-relaxed text-earth-900 sm:text-lg">
+            <p className="mt-6 min-w-0 w-full text-right text-base font-semibold leading-8 text-earth-900 [overflow-wrap:anywhere] [word-break:normal] sm:text-lg sm:leading-relaxed">
               {q.text}
             </p>
 
@@ -313,7 +313,7 @@ export default function ExamRunner({
                         <span className="h-2 w-2 rounded-full bg-maroon-600" />
                       )}
                     </span>
-                    <span className="min-w-0 flex-1 whitespace-pre-wrap break-words font-medium text-earth-900">{choice}</span>
+                    <span className="min-w-0 flex-1 text-right font-medium text-earth-900 [overflow-wrap:anywhere] [word-break:normal]">{choice}</span>
                   </button>
                 );
               })}
